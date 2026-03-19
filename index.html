@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Photo Route | 1-5 PM</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', sans-serif; background: #111; color: #eee; }
+
+        .header {
+            padding: 24px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+            background: #161616;
+        }
+        .header h1 { font-size: 1.4rem; font-weight: 300; letter-spacing: 6px; color: #d4c4a8; margin-bottom: 6px; }
+        .header .route { font-size: 0.75rem; color: #666; letter-spacing: 2px; }
+        .header-buttons {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .header-btn {
+            padding: 6px 16px;
+            background: #252525;
+            color: #888;
+            border: 1px solid #333;
+            border-radius: 16px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .header-btn:hover { background: #333; color: #d4c4a8; border-color: #444; }
+        .header .time-badge {
+            display: inline-block;
+            padding: 6px 20px;
+            background: #3d9d94;
+            color: #111;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        #import-file { display: none; }
+
+        .container { display: flex; height: calc(100vh - 120px); }
+        .sidebar { width: 440px; background: #181818; overflow-y: auto; }
+        .map-container { flex: 1; position: relative; }
+        #map { height: 100%; width: 100%; }
+
+        /* Stats Bar - Minimal & Sticky */
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            background: #1a2828;
+            border-bottom: 1px solid #222;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .stat-item {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        .stat-item strong {
+            color: #d4c4a8;
+            font-weight: 500;
+        }
+        .stat-item.warn strong { color: #e8c547; }
+        .stat-item.over strong { color: #e85555; }
+
+        /* Acts */
+        .act { border-bottom: 1px solid #222; }
+        .act-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            background: #1e1e1e;
+            cursor: pointer;
+        }
+        .act-head:hover { background: #252525; }
+        .act-head h2 { font-size: 0.8rem; font-weight: 500; letter-spacing: 2px; color: #d4c4a8; }
+        .act-meta { font-size: 0.65rem; color: #555; margin-top: 3px; }
+        .act-budget {
+            font-size: 0.65rem;
+            padding: 3px 10px;
+            border-radius: 10px;
+            background: rgba(61,157,148,0.15);
+            color: #3d9d94;
+        }
+        .act-budget.warn { background: rgba(232,197,71,0.15); color: #e8c547; }
+        .act-budget.over { background: rgba(232,85,85,0.15); color: #e85555; }
+        .toggle { color: #444; font-size: 1rem; }
+        .act-body { display: none; }
+        .act-body.open { display: block; }
+
+        /* Location Items */
+        .loc {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #1a1a1a;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .loc:hover { background: #1f1f1f; }
+        .loc.on { background: #1a2a25; border-left: 2px solid #3d9d94; }
+        .loc.on .chk { background: #3d9d94; border-color: #3d9d94; }
+        .loc.on .chk::after { content: '\2713'; font-size: 0.6rem; color: #111; }
+
+        /* Bonus items added to acts */
+        .loc.bonus-added {
+            background: #2a2520;
+            border-left: 2px solid #e8c547;
+            opacity: 0.85;
+        }
+        .loc.bonus-added .seq-num {
+            background: #e8c547;
+        }
+        .loc.bonus-added .loc-type {
+            color: #e8c547;
+        }
+        .idea-badge {
+            font-size: 0.5rem;
+            padding: 2px 6px;
+            background: #e8c547;
+            color: #111;
+            border-radius: 6px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        .chk {
+            width: 18px; height: 18px;
+            border: 2px solid #333;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .loc-info { flex: 1; min-width: 0; }
+        .loc-top { display: flex; align-items: center; gap: 8px; }
+        .loc-name { font-size: 0.8rem; font-weight: 500; color: #eee; }
+        .loc-type { font-size: 0.55rem; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+        .loc-dur { font-size: 0.65rem; color: #d4c4a8; margin-left: auto; }
+        .loc-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .tag {
+            font-size: 0.55rem;
+            padding: 2px 8px;
+            background: #252525;
+            border-radius: 10px;
+            color: #888;
+        }
+        .crowd { font-size: 0.5rem; padding: 2px 6px; border-radius: 6px; margin-left: 6px; font-weight: 600; }
+        .crowd.low { background: #3d9d94; color: #111; }
+        .crowd.medium { background: #e8c547; color: #111; }
+        .crowd.high { background: #e85555; color: #111; }
+
+        /* Reorder buttons */
+        .reorder {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-left: 8px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .loc.on .reorder { opacity: 1; }
+        .reorder-btn {
+            width: 20px;
+            height: 14px;
+            background: #333;
+            border: none;
+            border-radius: 3px;
+            color: #888;
+            font-size: 0.6rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .reorder-btn:hover { background: #444; color: #d4c4a8; }
+        .reorder-btn:disabled { opacity: 0.3; cursor: default; }
+
+        .seq-num {
+            width: 20px;
+            height: 20px;
+            background: #3d9d94;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #111;
+            flex-shrink: 0;
+        }
+        .loc:not(.on) .seq-num { display: none; }
+
+        /* Bonus Spots with Images */
+        .bonus { padding: 20px; background: #141414; }
+        .bonus h3 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #888;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bonus h3 span { font-size: 0.6rem; color: #444; font-weight: normal; }
+
+        .bonus-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+        .bonus-item:hover { border-color: #333; }
+        .bonus-item.on { border-color: #3d9d94; background: #162220; }
+        .bonus-item.on .bonus-add { background: #3d9d94; color: #111; }
+
+        .bonus-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #222;
+            flex-shrink: 0;
+        }
+        .bonus-content { flex: 1; min-width: 0; }
+        .bonus-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+        .bonus-name { font-size: 0.8rem; font-weight: 500; color: #eee; }
+        .bonus-add {
+            font-size: 0.55rem;
+            padding: 4px 10px;
+            background: #252525;
+            border-radius: 10px;
+            color: #666;
+        }
+        .bonus-meta { display: flex; gap: 8px; margin-bottom: 6px; }
+        .bonus-dur { font-size: 0.55rem; color: #d4c4a8; }
+        .bonus-crowd { font-size: 0.55rem; color: #666; }
+        .bonus-desc { font-size: 0.65rem; color: #555; line-height: 1.4; }
+        .bonus-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+
+        /* Inspo Gallery */
+        .inspo-gallery {
+            padding: 20px;
+            background: #0f0f0f;
+            border-top: 1px solid #222;
+        }
+        .inspo-gallery h3 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+        .inspo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .inspo-thumb {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #222;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.15s;
+            width: 100%;
+        }
+        .inspo-thumb:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        .inspo-thumb.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        /* Linked photos in location cards */
+        .loc-linked-photos {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .linked-photo-wrap {
+            position: relative;
+            display: inline-block;
+        }
+        .linked-photo {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #333;
+            transition: transform 0.15s;
+        }
+        .linked-photo:hover { transform: scale(1.1); }
+        .unlink-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #e85555;
+            color: #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
+            line-height: 14px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #111;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .linked-photo-wrap:hover .unlink-btn { opacity: 1; }
+
+        /* Drag and drop */
+        .loc.drag-over {
+            background: #1a3530 !important;
+            border: 2px dashed #3d9d94 !important;
+            border-left: 2px dashed #3d9d94 !important;
+        }
+        .drop-hint {
+            font-size: 0.6rem;
+            color: #3d9d94;
+            margin-top: 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .loc.on .drop-hint { opacity: 0.6; }
+        .loc.drag-over .drop-hint { opacity: 1; }
+
+        .inspo-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .inspo-modal.open { display: flex; }
+        .inspo-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+        }
+        .inspo-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+        }
+        .inspo-modal-close:hover { color: #fff; }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            background: #1a1a1a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        .legend h4 { font-size: 0.6rem; color: #666; letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.65rem; color: #888; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .c1 { background: #e85555; }
+        .c2 { background: #3d9d94; }
+        .c3 { background: #e8c547; }
+
+        .leaflet-popup-content-wrapper { background: #1a1a1a; color: #eee; border-radius: 8px; }
+        .leaflet-popup-tip { background: #1a1a1a; }
+
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WEDDING PHOTO ROUTE</h1>
+        <div class="route">CITY HALL - SOHO - GREENWICH VILLAGE - HUDSON RIVER</div>
+        <div class="header-buttons">
+            <button class="header-btn" onclick="exportRoute()">Export Route</button>
+            <button class="header-btn" onclick="document.getElementById('import-file').click()">Import Route</button>
+            <input type="file" id="import-file" accept=".json" onchange="importRoute(this.files[0])" />
+            <span class="time-badge">WEDNESDAY 1:00 - 5:00 PM</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="stats-bar">
+                <div class="stat-item"><strong id="s-spots">0</strong> spots</div>
+                <div class="stat-item">Walking <strong id="s-walk">0</strong>min</div>
+                <div class="stat-item" id="s-end">Est. end <strong>1:00 PM</strong></div>
+            </div>
+
+            <div class="act" data-act="1">
+                <div class="act-head" onclick="toggle(1)">
+                    <div>
+                        <h2>ACT I - CITY HALL</h2>
+                        <div class="act-meta">The Official Beginning</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="act-budget" id="a1-budget">0/40</span>
+                        <span class="toggle">-</span>
+                    </div>
+                </div>
+                <div class="act-body open" id="a1-body"></div>
+            </div>
+
+            <div class="act" data-act="2">
+                <div class="act-head" onclick="toggle(2)">
+                    <div>
+                        <h2>ACT II - SOHO</h2>
+                        <div class="act-meta">Books, Coffee, Cobblestones</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="act-budget" id="a2-budget">0/100</span>
+                        <span class="toggle">+</span>
+                    </div>
+                </div>
+                <div class="act-body" id="a2-body"></div>
+            </div>
+
+            <div class="act" data-act="3">
+                <div class="act-head" onclick="toggle(3)">
+                    <div>
+                        <h2>ACT III - VILLAGE & RIVER</h2>
+                        <div class="act-meta">Golden Hour Finale</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="act-budget" id="a3-budget">0/100</span>
+                        <span class="toggle">+</span>
+                    </div>
+                </div>
+                <div class="act-body" id="a3-body"></div>
+            </div>
+
+            <div class="bonus">
+                <h3>MORE IDEAS <span>click to add</span></h3>
+                <div id="bonus-list"></div>
+            </div>
+
+            <div class="inspo-gallery">
+                <h3>INSPO PHOTOS</h3>
+                <div class="inspo-grid" id="inspo-grid"></div>
+            </div>
+        </div>
+
+        <!-- Inspo Modal -->
+        <div class="inspo-modal" id="inspo-modal" onclick="closeInspoModal()">
+            <span class="inspo-modal-close">&times;</span>
+            <img id="inspo-modal-img" src="" />
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="legend">
+                <h4>Route</h4>
+                <div class="legend-item"><div class="legend-dot c1"></div>Civic Center</div>
+                <div class="legend-item"><div class="legend-dot c2"></div>SoHo / NoLita</div>
+                <div class="legend-item"><div class="legend-dot c3"></div>West Village / Hudson River</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const BUDGET = { 1: 40, 2: 100, 3: 100 };
+        const TOTAL = 240;
+
+        // Selection state is baked in - these are the currently selected spots
+        const locs = [
+            { id:1, n:"City Hall Steps", lat:40.7128, lng:-74.0060, act:1, type:"Ceremony", dur:20, crowd:"low", on:true, seq:1, tags:["Editorial","Power Couple"], img:"https://picsum.photos/seed/cityhall-nyc/400/250", hours:"Outdoor - Always open" },
+            { id:2, n:"Worth St Colonnade", lat:40.7152, lng:-74.0030, act:1, type:"Architecture", dur:10, crowd:"low", on:true, seq:2, tags:["B&W Urban","Doorway"], img:"https://picsum.photos/seed/colonnade-arch/400/250", hours:"Outdoor - Always open" },
+            { id:3, n:"Foley Square", lat:40.7143, lng:-74.0018, act:1, type:"Urban", dur:10, crowd:"low", on:false, tags:["Newspaper Hide"], img:"https://picsum.photos/seed/foley-square/400/250", hours:"Outdoor - Always open" },
+            { id:4, n:"African Burial Ground", lat:40.7145, lng:-74.0042, act:1, type:"Memorial", dur:10, crowd:"low", on:false, tags:["Silhouette"], img:"https://picsum.photos/seed/memorial-nyc/400/250", hours:"Outdoor - Always open" },
+
+            { id:5, n:"Housing Works Bookstore", lat:40.7223, lng:-73.9972, act:2, type:"Bookstore", dur:20, crowd:"low", on:true, seq:1, tags:["Library Floor","Bookshelf Kiss"], img:"https://picsum.photos/seed/bookstore-vintage/400/250", hours:"11am-7pm" },
+            { id:6, n:"McNally Jackson", lat:40.7232, lng:-73.9945, act:2, type:"Bookstore", dur:15, crowd:"medium", on:false, tags:["Reading Together"], img:"https://picsum.photos/seed/mcnally-books/400/250", hours:"10am-9pm" },
+            { id:7, n:"Cafe Integral", lat:40.7215, lng:-73.9956, act:2, type:"Cafe", dur:15, crowd:"low", on:false, tags:["Window Seat","Coffee"], img:"https://picsum.photos/seed/coffee-window/400/250", hours:"Closes 4pm!" },
+            { id:8, n:"La Mercerie", lat:40.7210, lng:-73.9980, act:2, type:"Cafe", dur:15, crowd:"medium", on:false, tags:["Parisian Terrace"], img:"https://picsum.photos/seed/french-cafe/400/250", hours:"8am-10pm" },
+            { id:9, n:"Greene St Cobblestones", lat:40.7245, lng:-73.9995, act:2, type:"Street", dur:15, crowd:"low", on:true, seq:2, tags:["Cobblestone Carry","Romantic"], img:"https://picsum.photos/seed/cobblestone-soho/400/250", hours:"Outdoor - Always open" },
+            { id:10, n:"Mercer St Cast Iron", lat:40.7240, lng:-73.9988, act:2, type:"Street", dur:10, crowd:"low", on:false, tags:["Architecture"], img:"https://picsum.photos/seed/castiron-soho/400/250", hours:"Outdoor - Always open" },
+            { id:11, n:"Prince St Pizza", lat:40.7230, lng:-73.9948, act:2, type:"Food", dur:15, crowd:"low", on:true, seq:3, tags:["Just Married Pizza"], img:"https://picsum.photos/seed/pizza-slice/400/250", hours:"11am-11pm" },
+            { id:12, n:"What Goes Around", lat:40.7224, lng:-74.0007, act:2, type:"Vintage", dur:15, crowd:"medium", on:false, tags:["Retro","70s Vibes"], img:"https://picsum.photos/seed/vintage-clothes/400/250", hours:"11am-7pm" },
+            { id:13, n:"Evolution Store", lat:40.7265, lng:-73.9925, act:2, type:"Quirky", dur:10, crowd:"low", on:false, tags:["Silly Goggles"], img:"https://picsum.photos/seed/curiosity-shop/400/250", hours:"11am-7pm" },
+
+            { id:14, n:"Washington Sq Arch", lat:40.7308, lng:-73.9973, act:3, type:"Park", dur:15, crowd:"high", on:true, seq:1, tags:["Grand Scale"], img:"https://picsum.photos/seed/washington-arch/400/250", hours:"Outdoor - Always open" },
+            { id:15, n:"WSP Fountain", lat:40.7308, lng:-73.9975, act:3, type:"Park", dur:10, crowd:"high", on:false, tags:["Candid","Lively"], img:"https://picsum.photos/seed/park-fountain/400/250", hours:"Outdoor - Always open" },
+            { id:16, n:"Three Lives Books", lat:40.7339, lng:-74.0021, act:3, type:"Bookstore", dur:12, crowd:"low", on:false, tags:["Intimate","Cozy"], img:"https://picsum.photos/seed/cozy-bookshop/400/250", hours:"10am-7pm" },
+            { id:17, n:"Caffe Reggio", lat:40.7303, lng:-74.0003, act:3, type:"Cafe", dur:15, crowd:"medium", on:false, tags:["Historic","Moody"], img:"https://picsum.photos/seed/italian-cafe/400/250", hours:"9am-3am" },
+            { id:18, n:"Murray's Cheese", lat:40.7322, lng:-74.0040, act:3, type:"Grocery", dur:12, crowd:"low", on:false, tags:["Domestic Bliss"], img:"https://picsum.photos/seed/cheese-shop/400/250", hours:"9am-8pm" },
+            { id:19, n:"Bleecker Playground", lat:40.7324, lng:-74.0056, act:3, type:"Playground", dur:18, crowd:"low", on:true, seq:2, tags:["Swings","Playful"], img:"https://picsum.photos/seed/playground-swings/400/250", hours:"Outdoor - Always open" },
+            { id:20, n:"The Uncommons", lat:40.7300, lng:-74.0000, act:3, type:"Game Cafe", dur:15, crowd:"low", on:false, tags:["Board Games"], img:"https://picsum.photos/seed/boardgame-cafe/400/250", hours:"10am-11pm" },
+            { id:21, n:"Hudson River Pier 45", lat:40.7338, lng:-74.0108, act:3, type:"Riverside", dur:20, crowd:"low", on:true, seq:3, tags:["Golden Hour","Wide Open"], img:"https://picsum.photos/seed/hudson-pier-sunset/400/250", hours:"Outdoor - Always open" },
+            { id:22, n:"Christopher St Pier", lat:40.7352, lng:-74.0117, act:3, type:"Sunset", dur:15, crowd:"low", on:true, seq:4, tags:["Silhouette","Finale"], img:"https://picsum.photos/seed/sunset-silhouette/400/250", hours:"Outdoor - Always open" },
+            { id:23, n:"Pier 46 Lawn", lat:40.7325, lng:-74.0115, act:3, type:"Riverside", dur:15, crowd:"low", on:false, tags:["Grass Field","Relaxed"], img:"https://picsum.photos/seed/grass-waterfront/400/250", hours:"Outdoor - Always open" },
+            { id:24, n:"Angelika Film Center", lat:40.7265, lng:-73.9959, act:3, type:"Cinema", dur:15, crowd:"low", on:false, tags:["Film Noir","Marquee"], img:"https://picsum.photos/seed/cinema-marquee/400/250", hours:"10am-11pm" }
+        ];
+
+        const bonus = [
+            { id:101, n:"Record/Vinyl Shop", act:2, dur:15, crowd:"low", on:false, img:"inspo/08-vinyl-shop.png",
+              desc:"John & Yoko vinyl kiss recreation", tags:["Vinyl Kiss","Nostalgic"] },
+            { id:102, n:"Shadow Play Interior", act:2, dur:10, crowd:"low", on:false, img:"inspo/01-shadow-play.png",
+              desc:"Silhouette kiss cast on wall", tags:["Shadow","Artistic"] },
+            { id:103, n:"Noodle Shop", act:2, dur:20, crowd:"medium", on:false, img:"inspo/03-noodle-shop.png",
+              desc:"Candid eating + window dancing", tags:["Candid","Fun"] },
+            { id:104, n:"Kitchen/Cooking Scene", act:3, dur:12, crowd:"low", on:false, img:"inspo/05-kitchen-scene.png",
+              desc:"Domestic bliss, backs to camera", tags:["Kitchen","Everyday"] },
+            { id:105, n:"Bowling Alley", act:3, dur:25, crowd:"medium", on:false, img:"inspo/14-bowling-alley.png",
+              desc:"Bowling ball kiss, retro lanes", tags:["Bowling","Playful"] },
+            { id:106, n:"Tandem Bike Ride", act:3, dur:15, crowd:"low", on:false, img:"inspo/23-tandem-bike.png",
+              desc:"Riding along river, motion blur", tags:["Bike","Carefree"] },
+            { id:107, n:"Editorial Suits", act:2, dur:15, crowd:"low", on:false, img:"inspo/24-editorial-suits.png",
+              desc:"Back-to-back, minimal background", tags:["Fashion","Editorial"] },
+            { id:108, n:"Red Background", act:2, dur:10, crowd:"low", on:false, img:"inspo/26-red-background.png",
+              desc:"Bold red backdrop, theatrical", tags:["Red","Dramatic"] },
+            { id:109, n:"Cotton Candy Editorial", act:3, dur:10, crowd:"medium", on:false, img:"inspo/22-cotton-candy.png",
+              desc:"Street treat on steps, playful", tags:["Cotton Candy","Fun"] },
+            { id:110, n:"Dog Park Moment", act:3, dur:12, crowd:"medium", on:false, img:"inspo/07-dog-park.png",
+              desc:"Watching dogs, candid joy", tags:["Dogs","Candid"] },
+            { id:111, n:"Newspaper Cafe", act:3, dur:15, crowd:"medium", on:false, img:"inspo/34-newspaper-cafe.png",
+              desc:"Newspapers hiding faces at terrace", tags:["Newspaper","Parisian"] },
+            { id:112, n:"Retro Velvet Couch", act:2, dur:15, crowd:"low", on:false, img:"inspo/30-retro-couch.png",
+              desc:"70s velvet, heart sunglasses", tags:["Retro","Glam"] }
+        ];
+
+        // All inspo photos - paths relative to index.html
+        const inspoPhotos = [
+            "inspo/01-shadow-play.png",
+            "inspo/02-candid-couple.png",
+            "inspo/03-noodle-shop.png",
+            "inspo/04-couple-stairs.png",
+            "inspo/05-kitchen-scene.png",
+            "inspo/06-cafe-window.png",
+            "inspo/07-dog-park.png",
+            "inspo/08-vinyl-shop.png",
+            "inspo/09-couple-pose-1.png",
+            "inspo/10-couple-pose-2.png",
+            "inspo/11-street-scene.png",
+            "inspo/12-couple-pose-3.png",
+            "inspo/13-couple-pose-4.png",
+            "inspo/14-bowling-alley.png",
+            "inspo/15-couple-pose-5.png",
+            "inspo/16-couple-pose-6.png",
+            "inspo/17-couple-pose-7.png",
+            "inspo/18-couple-pose-8.png",
+            "inspo/19-couple-pose-9.png",
+            "inspo/20-couple-pose-10.png",
+            "inspo/21-couple-pose-11.png",
+            "inspo/22-cotton-candy.png",
+            "inspo/23-tandem-bike.png",
+            "inspo/24-editorial-suits.png",
+            "inspo/25-couple-pose-12.png",
+            "inspo/26-red-background.png",
+            "inspo/27-couple-pose-13.png",
+            "inspo/28-couple-pose-14.png",
+            "inspo/29-couple-pose-15.png",
+            "inspo/30-retro-couch.png",
+            "inspo/31-couple-pose-16.png",
+            "inspo/32-couple-pose-17.png",
+            "inspo/33-couple-pose-18.png",
+            "inspo/34-newspaper-cafe.png",
+            "inspo/35-couple-pose-19.png"
+        ];
+
+        let map, markers = {};
+        const photoLinks = {}; // { locId: [photoPath, ...] }
+
+        // ===== PERSISTENCE FUNCTIONS =====
+        function saveState() {
+            const state = {
+                version: 1,
+                locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
+                bonus: bonus.map(b => ({ id: b.id, on: b.on })),
+                photoLinks: photoLinks
+            };
+            try {
+                localStorage.setItem('weddingRoute', JSON.stringify(state));
+            } catch (e) { console.log('Could not save state:', e); }
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('weddingRoute');
+                if (saved) {
+                    applyState(JSON.parse(saved));
+                    return true;
+                }
+            } catch (e) { console.log('Could not load state:', e); }
+            return false;
+        }
+
+        function applyState(state) {
+            if (state.locs) {
+                state.locs.forEach(s => {
+                    const loc = locs.find(l => l.id === s.id);
+                    if (loc) { loc.on = s.on; loc.seq = s.seq; }
+                });
+            }
+            if (state.bonus) {
+                state.bonus.forEach(s => {
+                    const b = bonus.find(x => x.id === s.id);
+                    if (b) b.on = s.on;
+                });
+            }
+            if (state.photoLinks) {
+                Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
+                Object.assign(photoLinks, state.photoLinks);
+            }
+        }
+
+        function exportRoute() {
+            const state = {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
+                bonus: bonus.map(b => ({ id: b.id, on: b.on })),
+                photoLinks: photoLinks
+            };
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'wedding-route.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importRoute(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const state = JSON.parse(e.target.result);
+                    applyState(state);
+                    saveState();
+                    initSequence();
+                    updateMarkerIcons();
+                    render();
+                    drawRoute();
+                    calc();
+                    alert('Route imported successfully!');
+                } catch (err) {
+                    alert('Error importing route: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            document.getElementById('import-file').value = '';
+        }
+
+        // ===== DRAG AND DROP =====
+        function dragPhoto(e, path) {
+            e.dataTransfer.setData('text/plain', path);
+            e.target.classList.add('dragging');
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            const loc = e.target.closest('.loc');
+            if (loc && loc.dataset.id) loc.classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            const loc = e.target.closest('.loc');
+            if (loc) loc.classList.remove('drag-over');
+        }
+
+        function dropPhoto(e, locId) {
+            e.preventDefault();
+            e.target.closest('.loc')?.classList.remove('drag-over');
+            const path = e.dataTransfer.getData('text/plain');
+            if (!path || !path.includes('inspo/')) return;
+            if (!photoLinks[locId]) photoLinks[locId] = [];
+            if (!photoLinks[locId].includes(path)) {
+                photoLinks[locId].push(path);
+                saveState();
+                render();
+                updatePopups();
+            }
+        }
+
+        function unlinkPhoto(locId, path) {
+            if (photoLinks[locId]) {
+                photoLinks[locId] = photoLinks[locId].filter(p => p !== path);
+                if (photoLinks[locId].length === 0) delete photoLinks[locId];
+                saveState();
+                render();
+                updatePopups();
+            }
+        }
+
+        function updatePopups() {
+            locs.forEach(l => {
+                if (markers[l.id]) {
+                    const linked = photoLinks[l.id] || [];
+                    const linkedHtml = linked.length ? `<div style="margin-bottom:8px;">${linked.map(p =>
+                        `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;" />`
+                    ).join('')}</div>` : '';
+                    const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
+                    markers[l.id].setPopupContent(`
+                        <div style="width:200px;">
+                            ${linkedHtml}
+                            <img src="${l.img}"
+                                 style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px;background:#222;"
+                                 onerror="this.src='https://via.placeholder.com/400x250/222/666?text=${encodeURIComponent(l.n)}'" />
+                            <b style="color:#d4c4a8;">${l.n}</b><br>
+                            <span style="color:#888;font-size:0.8em;">${l.type} - ${l.dur}min</span>
+                            ${l.hours ? `<br><span style="color:#3d9d94;font-size:0.75em;">${l.hours}</span>` : ''}
+                            <br><a href="${gmapUrl}" target="_blank" style="color:#e8c547;font-size:0.7em;text-decoration:none;">View on Google Maps</a>
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        // Initialize sequence numbers for selected spots
+        function initSequence() {
+            [1,2,3].forEach(act => {
+                let seq = 1;
+                locs.filter(l => l.act === act && l.on)
+                    .sort((a,b) => (a.seq || 999) - (b.seq || 999) || a.id - b.id)
+                    .forEach(l => { l.seq = seq++; });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadState(); // Load saved state first
+            initSequence();
+            initMap();
+            render();
+            await drawRoute();
+            calc();
+        });
+
+        function initMap() {
+            map = L.map('map').setView([40.725, -74.002], 14);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'OSM CARTO', subdomains: 'abcd', maxZoom: 20
+            }).addTo(map);
+
+            locs.forEach(l => {
+                // Use coordinates-based Google Maps link (always works)
+                const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
+                const linked = photoLinks[l.id] || [];
+                const linkedHtml = linked.length ? `<div style="margin-bottom:8px;">${linked.map(p =>
+                    `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;" />`
+                ).join('')}</div>` : '';
+                const m = L.marker([l.lat, l.lng], {
+                    icon: makeIcon(l.act, l.on, getGlobalSeq(l)), opacity: l.on ? 1 : 0.35
+                }).addTo(map).bindPopup(`
+                    <div style="width:200px;">
+                        ${linkedHtml}
+                        <img src="${l.img}"
+                             style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px;background:#222;"
+                             onerror="this.src='https://via.placeholder.com/400x250/222/666?text=${encodeURIComponent(l.n)}'" />
+                        <b style="color:#d4c4a8;">${l.n}</b><br>
+                        <span style="color:#888;font-size:0.8em;">${l.type} - ${l.dur}min</span>
+                        ${l.hours ? `<br><span style="color:#3d9d94;font-size:0.75em;">${l.hours}</span>` : ''}
+                        <br><a href="${gmapUrl}" target="_blank" style="color:#e8c547;font-size:0.7em;text-decoration:none;">View on Google Maps</a>
+                    </div>
+                `, { maxWidth: 220 });
+                markers[l.id] = m;
+            });
+
+            drawRoute();
+        }
+
+        let routeLine = null;
+        let cachedWalkTime = 0;
+        let segmentCache = {}; // Cache individual segments
+        let routeDrawVersion = 0; // Track route draw requests to handle race conditions
+
+        // Fallback walking times between key segments (in minutes)
+        const WALK_FALLBACK = {
+            default: 5,
+            segments: {
+                '1-2': 3,
+                '2-5': 12,
+                '5-9': 4,
+                '9-11': 3,
+                '11-14': 8,
+                '14-19': 6,
+                '19-21': 8,
+                '21-22': 3
+            }
+        };
+
+        // Get fallback walk time for a segment
+        function getFallbackTime(id1, id2) {
+            const key = `${Math.min(id1,id2)}-${Math.max(id1,id2)}`;
+            return WALK_FALLBACK.segments[key] || WALK_FALLBACK.default;
+        }
+
+        // Fetch walking route SEGMENT BY SEGMENT to avoid weird detours
+        async function fetchWalkingRoute() {
+            // Sort by act first, then by sequence within each act
+            const selected = locs.filter(l => l.on).sort((a,b) => a.act - b.act || (a.seq || 999) - (b.seq || 999));
+            if (selected.length < 2) {
+                cachedWalkTime = 0;
+                return { time: 0, coords: [] };
+            }
+
+            let totalTime = 0;
+            let allCoords = [];
+
+            // Fetch route for each consecutive pair
+            for (let i = 0; i < selected.length - 1; i++) {
+                const from = selected[i];
+                const to = selected[i + 1];
+                const segmentKey = `${from.id}-${to.id}`;
+
+                // Check segment cache first
+                if (segmentCache[segmentKey]) {
+                    totalTime += segmentCache[segmentKey].time;
+                    allCoords.push(...segmentCache[segmentKey].coords);
+                    continue;
+                }
+
+                const waypoints = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+
+                try {
+                    const res = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/foot/${waypoints}?overview=full&geometries=geojson`);
+                    const data = await res.json();
+
+                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                        const segmentTime = Math.ceil(data.routes[0].duration / 60);
+                        const segmentCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+                        // Cache this segment
+                        segmentCache[segmentKey] = { time: segmentTime, coords: segmentCoords };
+
+                        totalTime += segmentTime;
+                        allCoords.push(...segmentCoords);
+                    } else {
+                        // Fallback for this segment
+                        const fallbackTime = getFallbackTime(from.id, to.id);
+                        segmentCache[segmentKey] = {
+                            time: fallbackTime,
+                            coords: [[from.lat, from.lng], [to.lat, to.lng]]
+                        };
+                        totalTime += fallbackTime;
+                        allCoords.push([from.lat, from.lng], [to.lat, to.lng]);
+                    }
+                } catch (e) {
+                    console.log('OSRM segment fetch failed, using fallback:', e);
+                    const fallbackTime = getFallbackTime(from.id, to.id);
+                    totalTime += fallbackTime;
+                    allCoords.push([from.lat, from.lng], [to.lat, to.lng]);
+                }
+            }
+
+            cachedWalkTime = totalTime;
+            return { time: totalTime, coords: allCoords };
+        }
+
+        // Draw route on map (async with race condition handling)
+        async function drawRoute() {
+            // Increment version and capture it for this call
+            const thisVersion = ++routeDrawVersion;
+
+            // Clear existing route immediately
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeLine = null;
+            }
+
+            const route = await fetchWalkingRoute();
+
+            // Check if a newer drawRoute was called while we were fetching
+            if (thisVersion !== routeDrawVersion) {
+                return; // Discard this outdated result
+            }
+
+            if (route.coords.length < 2) {
+                document.getElementById('s-walk').textContent = '0';
+                updateEndTime();
+                return;
+            }
+
+            routeLine = L.polyline(route.coords, {
+                color: '#d4c4a8',
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '8, 12'
+            }).addTo(map);
+
+            // Update walk time display
+            document.getElementById('s-walk').textContent = route.time;
+            updateEndTime();
+        }
+
+        // Update end time display
+        function updateEndTime() {
+            let shootTime = 0, spots = 0;
+            locs.forEach(l => { if(l.on) { shootTime += l.dur; spots++; }});
+            bonus.forEach(b => { if(b.on) { shootTime += b.dur; spots++; }});
+
+            const total = shootTime + cachedWalkTime;
+            const startHour = 13;
+            const endMins = startHour * 60 + total;
+            const endHr = Math.floor(endMins / 60);
+            const endMin = endMins % 60;
+            const endHr12 = endHr > 12 ? endHr - 12 : endHr;
+            const ampm = endHr >= 12 ? 'PM' : 'AM';
+            const endStr = `${endHr12}:${endMin.toString().padStart(2,'0')} ${ampm}`;
+
+            document.getElementById('s-spots').textContent = spots;
+            const endEl = document.getElementById('s-end');
+            endEl.innerHTML = `Est. end <strong>${endStr}</strong>`;
+            endEl.className = 'stat-item' + (total > TOTAL ? ' over' : total > TOTAL*0.85 ? ' warn' : '');
+        }
+
+        function makeIcon(act, on, globalSeq) {
+            const colors = {1:'#e85555', 2:'#3d9d94', 3:'#e8c547'};
+            const sz = on ? 28 : 18;
+            const seqLabel = (on && globalSeq) ? `<span style="color:#111;font-size:12px;font-weight:700;">${globalSeq}</span>` : '';
+            return L.divIcon({
+                className: 'marker',
+                html: `<div style="width:${sz}px;height:${sz}px;background:${colors[act]};border-radius:50%;border:2px solid ${on?'#fff':'#111'};box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">${seqLabel}</div>`,
+                iconSize: [sz, sz], iconAnchor: [sz/2, sz/2]
+            });
+        }
+
+        // Get global sequence for a location (order across all acts)
+        function getGlobalSeq(loc) {
+            if (!loc.on) return null;
+            const selected = locs.filter(l => l.on).sort((a,b) => a.act - b.act || (a.seq || 999) - (b.seq || 999));
+            return selected.findIndex(l => l.id === loc.id) + 1;
+        }
+
+        // Update all marker icons (call after any selection/reorder change)
+        function updateMarkerIcons() {
+            locs.forEach(l => {
+                if (markers[l.id]) {
+                    markers[l.id].setIcon(makeIcon(l.act, l.on, getGlobalSeq(l)));
+                    markers[l.id].setOpacity(l.on ? 1 : 0.35);
+                }
+            });
+        }
+
+        function render() {
+            [1,2,3].forEach(act => {
+                const body = document.getElementById(`a${act}-body`);
+                // Sort: selected first (by seq), then unselected (by id)
+                const actLocs = locs.filter(l => l.act === act)
+                    .sort((a, b) => {
+                        if (a.on && !b.on) return -1;
+                        if (!a.on && b.on) return 1;
+                        if (a.on && b.on) return (a.seq || 999) - (b.seq || 999);
+                        return a.id - b.id;
+                    });
+                const selectedCount = actLocs.filter(l => l.on).length;
+
+                // Get added bonus items for this act
+                const actBonus = bonus.filter(b => b.act === act && b.on);
+
+                // Build HTML: selected locs, then bonus items, then unselected locs
+                const selectedLocs = actLocs.filter(l => l.on);
+                const unselectedLocs = actLocs.filter(l => !l.on);
+
+                const renderLoc = (l) => {
+                    const linked = photoLinks[l.id] || [];
+                    const linkedHtml = linked.length ? `
+                        <div class="loc-linked-photos">
+                            ${linked.map(p => `
+                                <div class="linked-photo-wrap">
+                                    <img src="${p}" class="linked-photo" onclick="event.stopPropagation();openInspoModal('${p}')" />
+                                    <span class="unlink-btn" onclick="event.stopPropagation();unlinkPhoto(${l.id},'${p}')">x</span>
+                                </div>
+                            `).join('')}
+                        </div>` : '';
+                    return `
+                    <div class="loc ${l.on?'on':''}" data-id="${l.id}"
+                         ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="dropPhoto(event,${l.id})">
+                        <div class="chk" onclick="toggleLoc(${l.id})"></div>
+                        ${l.on ? `<div class="seq-num">${l.seq}</div>` : ''}
+                        <div class="loc-info" onclick="toggleLoc(${l.id})">
+                            <div class="loc-top">
+                                <span class="loc-name">${l.n}</span>
+                                <span class="loc-type">${l.type}</span>
+                                <span class="crowd ${l.crowd}">${l.crowd[0].toUpperCase()}</span>
+                                <span class="loc-dur">${l.dur}m</span>
+                            </div>
+                            <div class="loc-tags">${l.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+                            ${linkedHtml}
+                            ${l.on ? `<div class="drop-hint">Drop inspo photo here</div>` : ''}
+                        </div>
+                        ${l.on ? `
+                        <div class="reorder">
+                            <button class="reorder-btn" onclick="event.stopPropagation();moveSpot(${l.id},-1)" ${l.seq===1?'disabled':''}>&#9650;</button>
+                            <button class="reorder-btn" onclick="event.stopPropagation();moveSpot(${l.id},1)" ${l.seq===selectedCount?'disabled':''}>&#9660;</button>
+                        </div>` : ''}
+                    </div>`;
+                };
+
+                const renderBonus = (b) => `
+                    <div class="loc on bonus-added" data-bid="${b.id}" onclick="toggleBonus(${b.id})">
+                        <div class="chk"></div>
+                        <div class="seq-num">+</div>
+                        <div class="loc-info">
+                            <div class="loc-top">
+                                <span class="loc-name">${b.n}</span>
+                                <span class="loc-type">Idea</span>
+                                <span class="idea-badge">FLEX</span>
+                                <span class="loc-dur">${b.dur}m</span>
+                            </div>
+                            <div class="loc-tags">${b.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+                        </div>
+                    </div>`;
+
+                body.innerHTML =
+                    selectedLocs.map(renderLoc).join('') +
+                    actBonus.map(renderBonus).join('') +
+                    unselectedLocs.map(renderLoc).join('');
+            });
+
+            document.getElementById('bonus-list').innerHTML = bonus.map(b => `
+                <div class="bonus-item ${b.on?'on':''}" data-bid="${b.id}" onclick="toggleBonus(${b.id})">
+                    <img class="bonus-img" src="${b.img}" onerror="this.style.background='#333'" />
+                    <div class="bonus-content">
+                        <div class="bonus-head">
+                            <span class="bonus-name">${b.n}</span>
+                            <span class="bonus-add">${b.on?'Added':'+ Add'}</span>
+                        </div>
+                        <div class="bonus-meta">
+                            <span class="bonus-dur">${b.dur}m - Act ${b.act}</span>
+                            <span class="bonus-crowd">${b.crowd}</span>
+                        </div>
+                        <div class="bonus-desc">${b.desc}</div>
+                        <div class="bonus-tags">${b.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleLoc(id) {
+            const l = locs.find(x => x.id === id);
+            l.on = !l.on;
+
+            if (l.on) {
+                // Assign next sequence number in this act
+                const actSelected = locs.filter(x => x.act === l.act && x.on);
+                l.seq = actSelected.length;
+            } else {
+                // Remove sequence and reorder remaining
+                const oldSeq = l.seq;
+                l.seq = null;
+                locs.filter(x => x.act === l.act && x.on && x.seq > oldSeq)
+                    .forEach(x => x.seq--);
+            }
+
+            updateMarkerIcons(); // Update all markers since global sequence changed
+            saveState();
+            render();
+            drawRoute();
+            calc();
+        }
+
+        function moveSpot(id, dir) {
+            const l = locs.find(x => x.id === id);
+            const newSeq = l.seq + dir;
+
+            // Find the spot to swap with
+            const swap = locs.find(x => x.act === l.act && x.on && x.seq === newSeq);
+            if (!swap) return;
+
+            // Swap sequences
+            swap.seq = l.seq;
+            l.seq = newSeq;
+
+            updateMarkerIcons(); // Update all markers since global sequence changed
+            saveState();
+            render();
+            drawRoute();
+        }
+
+        function toggleBonus(id) {
+            const b = bonus.find(x => x.id === id);
+            b.on = !b.on;
+
+            // Update the bonus list UI
+            const el = document.querySelector(`.bonus-item[data-bid="${id}"]`);
+            if (el) {
+                el.classList.toggle('on', b.on);
+                el.querySelector('.bonus-add').textContent = b.on ? 'Added' : '+ Add';
+            }
+
+            // Re-render acts to show/hide bonus in act lists
+            saveState();
+            render();
+            calc();
+        }
+
+        function calc() {
+            const actT = {1:0, 2:0, 3:0};
+
+            locs.forEach(l => { if(l.on) { actT[l.act] += l.dur; }});
+            bonus.forEach(b => { if(b.on) { actT[b.act] += b.dur; }});
+
+            // Update act budgets
+            [1,2,3].forEach(a => {
+                const el = document.getElementById(`a${a}-budget`);
+                const p = actT[a] / BUDGET[a] * 100;
+                el.textContent = `${actT[a]}/${BUDGET[a]}`;
+                el.className = 'act-budget' + (p > 100 ? ' over' : p > 85 ? ' warn' : '');
+            });
+
+            // Update end time (walk time updated separately via drawRoute)
+            updateEndTime();
+        }
+
+        function toggle(act) {
+            const body = document.getElementById(`a${act}-body`);
+            const tog = body.previousElementSibling.querySelector('.toggle');
+            body.classList.toggle('open');
+            tog.textContent = body.classList.contains('open') ? '-' : '+';
+        }
+
+        // Render inspo gallery
+        function renderInspoGallery() {
+            const grid = document.getElementById('inspo-grid');
+            grid.innerHTML = inspoPhotos.map(photo => `
+                <img class="inspo-thumb" src="${photo}"
+                     draggable="true"
+                     ondragstart="dragPhoto(event,'${photo}')"
+                     ondragend="dragEnd(event)"
+                     onclick="openInspoModal('${photo}')"
+                     onerror="this.style.display='none'" />
+            `).join('');
+        }
+
+        function openInspoModal(src) {
+            document.getElementById('inspo-modal-img').src = src;
+            document.getElementById('inspo-modal').classList.add('open');
+        }
+
+        function closeInspoModal() {
+            document.getElementById('inspo-modal').classList.remove('open');
+        }
+
+        // Initialize inspo gallery on load
+        document.addEventListener('DOMContentLoaded', renderInspoGallery);
+    </script>
+</body>
+</html>
