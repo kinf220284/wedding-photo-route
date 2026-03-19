@@ -343,6 +343,7 @@
             border: 2px dashed #3d9d94 !important;
             border-left: 2px dashed #3d9d94 !important;
         }
+        .loc.drag-over * { pointer-events: none; }
         .drop-hint {
             font-size: 0.6rem;
             color: #3d9d94;
@@ -410,8 +411,9 @@
         <h1>WEDDING PHOTO ROUTE</h1>
         <div class="route">CITY HALL - SOHO - GREENWICH VILLAGE - HUDSON RIVER</div>
         <div class="header-buttons">
-            <button class="header-btn" onclick="exportRoute()">Export Route</button>
-            <button class="header-btn" onclick="document.getElementById('import-file').click()">Import Route</button>
+            <button class="header-btn" onclick="copyRouteLink()">Copy Link</button>
+            <button class="header-btn" onclick="exportRoute()">Export JSON</button>
+            <button class="header-btn" onclick="document.getElementById('import-file').click()">Import</button>
             <input type="file" id="import-file" accept=".json" onchange="importRoute(this.files[0])" />
             <span class="time-badge">WEDNESDAY 1:00 - 5:00 PM</span>
         </div>
@@ -447,10 +449,10 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a2-budget">0/100</span>
-                        <span class="toggle">+</span>
+                        <span class="toggle">-</span>
                     </div>
                 </div>
-                <div class="act-body" id="a2-body"></div>
+                <div class="act-body open" id="a2-body"></div>
             </div>
 
             <div class="act" data-act="3">
@@ -461,10 +463,10 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a3-budget">0/100</span>
-                        <span class="toggle">+</span>
+                        <span class="toggle">-</span>
                     </div>
                 </div>
-                <div class="act-body" id="a3-body"></div>
+                <div class="act-body open" id="a3-body"></div>
             </div>
 
             <div class="bonus">
@@ -527,7 +529,7 @@
             { id:21, n:"Hudson River Pier 45", lat:40.7338, lng:-74.0108, act:3, type:"Riverside", dur:20, crowd:"low", on:true, seq:3, tags:["Golden Hour","Wide Open"], img:"https://picsum.photos/seed/hudson-pier-sunset/400/250", hours:"Outdoor - Always open" },
             { id:22, n:"Christopher St Pier", lat:40.7352, lng:-74.0117, act:3, type:"Sunset", dur:15, crowd:"low", on:true, seq:4, tags:["Silhouette","Finale"], img:"https://picsum.photos/seed/sunset-silhouette/400/250", hours:"Outdoor - Always open" },
             { id:23, n:"Pier 46 Lawn", lat:40.7325, lng:-74.0115, act:3, type:"Riverside", dur:15, crowd:"low", on:false, tags:["Grass Field","Relaxed"], img:"https://picsum.photos/seed/grass-waterfront/400/250", hours:"Outdoor - Always open" },
-            { id:24, n:"Angelika Film Center", lat:40.7265, lng:-73.9959, act:3, type:"Cinema", dur:15, crowd:"low", on:false, tags:["Film Noir","Marquee"], img:"https://picsum.photos/seed/cinema-marquee/400/250", hours:"10am-11pm" }
+            { id:24, n:"Angelika Film Center", lat:40.7265, lng:-73.9959, act:2, type:"Cinema", dur:15, crowd:"low", on:false, tags:["Film Noir","Marquee"], img:"https://picsum.photos/seed/cinema-marquee/400/250", hours:"10am-11pm" }
         ];
 
         const bonus = [
@@ -609,6 +611,7 @@
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
+                updateURLHash();
             } catch (e) { console.log('Could not save state:', e); }
         }
 
@@ -681,6 +684,47 @@
             document.getElementById('import-file').value = '';
         }
 
+        // ===== URL-BASED SHARING =====
+        function updateURLHash() {
+            const state = {
+                l: locs.filter(l => l.on).map(l => ({ i: l.id, s: l.seq })),
+                b: bonus.filter(b => b.on).map(b => b.id),
+                p: photoLinks
+            };
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+            history.replaceState(null, '', '#' + encoded);
+        }
+
+        function loadFromURL() {
+            const hash = window.location.hash.slice(1);
+            if (!hash) return false;
+            try {
+                const state = JSON.parse(decodeURIComponent(escape(atob(hash))));
+                locs.forEach(l => { l.on = false; l.seq = null; });
+                bonus.forEach(b => { b.on = false; });
+                Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
+                state.l?.forEach(s => {
+                    const loc = locs.find(l => l.id === s.i);
+                    if (loc) { loc.on = true; loc.seq = s.s; }
+                });
+                state.b?.forEach(id => {
+                    const b = bonus.find(x => x.id === id);
+                    if (b) b.on = true;
+                });
+                if (state.p) Object.assign(photoLinks, state.p);
+                return true;
+            } catch (e) { return false; }
+        }
+
+        function copyRouteLink() {
+            updateURLHash();
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copied! Share this URL to share your route.');
+            }).catch(() => {
+                prompt('Copy this link:', window.location.href);
+            });
+        }
+
         // ===== DRAG AND DROP =====
         function dragPhoto(e, path) {
             e.dataTransfer.setData('text/plain', path);
@@ -693,20 +737,26 @@
 
         function allowDrop(e) {
             e.preventDefault();
+            e.stopPropagation();
             const loc = e.target.closest('.loc');
-            if (loc && loc.dataset.id) loc.classList.add('drag-over');
+            if (loc) loc.classList.add('drag-over');
         }
 
         function dragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
             const loc = e.target.closest('.loc');
-            if (loc) loc.classList.remove('drag-over');
+            if (loc && !loc.contains(e.relatedTarget)) {
+                loc.classList.remove('drag-over');
+            }
         }
 
         function dropPhoto(e, locId) {
             e.preventDefault();
-            e.target.closest('.loc')?.classList.remove('drag-over');
+            e.stopPropagation();
+            document.querySelectorAll('.loc.drag-over').forEach(el => el.classList.remove('drag-over'));
             const path = e.dataTransfer.getData('text/plain');
-            if (!path || !path.includes('inspo/')) return;
+            if (!path) return;
             if (!photoLinks[locId]) photoLinks[locId] = [];
             if (!photoLinks[locId].includes(path)) {
                 photoLinks[locId].push(path);
@@ -761,7 +811,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            loadState(); // Load saved state first
+            // Priority: URL hash > localStorage > defaults
+            if (!loadFromURL()) {
+                loadState();
+            }
             initSequence();
             initMap();
             render();
