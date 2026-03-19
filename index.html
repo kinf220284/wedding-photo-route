@@ -1010,7 +1010,7 @@
                     <div class="loc ${l.on?'on':''}" data-id="${l.id}"
                          ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="dropPhoto(event,${l.id})">
                         <div class="chk" onclick="toggleLoc(${l.id})"></div>
-                        ${l.on ? `<div class="seq-num">${l.seq}</div>` : ''}
+                        ${l.on ? `<div class="seq-num">${getGlobalSeq(l)}</div>` : ''}
                         <div class="loc-info" onclick="toggleLoc(${l.id})">
                             <div class="loc-top">
                                 <span class="loc-name">${l.n}</span>
