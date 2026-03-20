@@ -296,6 +296,52 @@
             opacity: 0.5;
             transform: scale(0.95);
         }
+        .inspo-thumb.linked {
+            opacity: 0.4;
+        }
+        .inspo-thumb-wrap.linked::after {
+            content: '\2713';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            background: #3d9d94;
+            border-radius: 50%;
+            color: #111;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        /* Add photo placeholder */
+        .inspo-add-placeholder {
+            aspect-ratio: 1;
+            border: 2px dashed #444;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+        }
+        .inspo-add-placeholder:hover {
+            border-color: #3d9d94;
+            background: rgba(61,157,148,0.1);
+        }
+        .inspo-add-placeholder span {
+            font-size: 2rem;
+            color: #444;
+            font-weight: 300;
+            transition: color 0.15s;
+        }
+        .inspo-add-placeholder:hover span {
+            color: #3d9d94;
+        }
 
         /* Linked photos in location cards */
         .loc-linked-photos {
@@ -1024,6 +1070,7 @@
                 saveState();
                 render();
                 updatePopups();
+                renderInspoGallery();
             }
         }
 
@@ -1064,6 +1111,7 @@
                 saveState();
                 render();
                 updatePopups();
+                renderInspoGallery();
             }
         }
 
@@ -1158,6 +1206,7 @@
                 saveState();
                 render();
                 updatePopups();
+                renderInspoGallery();
             }
 
             // Clean up
@@ -1634,33 +1683,51 @@
             tog.textContent = body.classList.contains('open') ? '-' : '+';
         }
 
+        // Check if a photo is linked to any location
+        function isPhotoLinked(photo) {
+            return Object.values(photoLinks).some(links => links.includes(photo));
+        }
+
         // Render inspo gallery
         function renderInspoGallery() {
             const grid = document.getElementById('inspo-grid');
 
-            // Built-in photos (no delete button)
-            const builtInHtml = inspoPhotos.map(photo => `
-                <img class="inspo-thumb" src="${photo}"
-                     draggable="true"
-                     ondragstart="dragPhoto(event,'${photo}')"
-                     ondragend="dragEnd(event)"
-                     onclick="openInspoModal('${photo}')"
-                     onerror="this.style.display='none'" />
-            `).join('');
-
             // Custom photos (with delete button)
-            const customHtml = customInspoPhotos.map((photo, index) => `
-                <div class="inspo-thumb-wrap">
-                    <img class="inspo-thumb" src="${photo}"
+            const customHtml = customInspoPhotos.map((photo, index) => {
+                const linked = isPhotoLinked(photo);
+                return `
+                <div class="inspo-thumb-wrap ${linked ? 'linked' : ''}">
+                    <img class="inspo-thumb ${linked ? 'linked' : ''}" src="${photo}"
                          draggable="true"
                          ondragstart="dragPhoto(event,'${photo}')"
                          ondragend="dragEnd(event)"
                          onclick="openInspoModal('${photo}')" />
                     <button class="inspo-delete" onclick="event.stopPropagation();removeInspoPhoto(${index})">x</button>
                 </div>
-            `).join('');
+            `}).join('');
 
-            grid.innerHTML = customHtml + builtInHtml;
+            // Built-in photos (no delete button)
+            const builtInHtml = inspoPhotos.map(photo => {
+                const linked = isPhotoLinked(photo);
+                return `
+                <div class="inspo-thumb-wrap ${linked ? 'linked' : ''}">
+                    <img class="inspo-thumb ${linked ? 'linked' : ''}" src="${photo}"
+                         draggable="true"
+                         ondragstart="dragPhoto(event,'${photo}')"
+                         ondragend="dragEnd(event)"
+                         onclick="openInspoModal('${photo}')"
+                         onerror="this.parentElement.style.display='none'" />
+                </div>
+            `}).join('');
+
+            // Add placeholder at the end
+            const addPlaceholder = `
+                <div class="inspo-add-placeholder" onclick="addInspoPhoto()">
+                    <span>+</span>
+                </div>
+            `;
+
+            grid.innerHTML = customHtml + builtInHtml + addPlaceholder;
         }
 
         // Add custom inspo photo
