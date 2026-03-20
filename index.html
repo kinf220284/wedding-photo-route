@@ -402,6 +402,15 @@
         .leaflet-popup-content-wrapper { background: #1a1a1a; color: #eee; border-radius: 8px; }
         .leaflet-popup-tip { background: #1a1a1a; }
 
+        /* Allow drop on map by disabling pointer-events on Leaflet layers during drag */
+        #map.dragging-photo .leaflet-pane,
+        #map.dragging-photo .leaflet-control-container {
+            pointer-events: none !important;
+        }
+        #map.dragging-photo .leaflet-marker-icon {
+            pointer-events: none !important;
+        }
+
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
     </style>
@@ -487,7 +496,7 @@
         </div>
 
         <div class="map-container">
-            <div id="map" ondragover="mapDragOver(event)" ondragleave="mapDragLeave(event)" ondrop="mapDrop(event)"></div>
+            <div id="map"></div>
             <div class="legend">
                 <h4>Route</h4>
                 <div class="legend-item"><div class="legend-dot c1"></div>Civic Center</div>
@@ -729,11 +738,20 @@
         // ===== DRAG AND DROP =====
         function dragPhoto(e, path) {
             e.dataTransfer.setData('text/plain', path);
+            e.dataTransfer.effectAllowed = 'copy';
             e.target.classList.add('dragging');
+            // Enable drop on map by disabling Leaflet's pointer-events
+            document.getElementById('map').classList.add('dragging-photo');
         }
 
         function dragEnd(e) {
             e.target.classList.remove('dragging');
+            document.getElementById('map').classList.remove('dragging-photo');
+            // Clean up any highlighted marker
+            if (hoverMarkerId) {
+                unhighlightMarker(hoverMarkerId);
+                hoverMarkerId = null;
+            }
         }
 
         function allowDrop(e) {
@@ -840,8 +858,25 @@
 
         function mapDrop(e) {
             e.preventDefault();
+            e.stopPropagation();
+
+            // Remove dragging state
+            document.getElementById('map').classList.remove('dragging-photo');
+
             const path = e.dataTransfer.getData('text/plain');
-            if (!path || !hoverMarkerId) return;
+            if (!path) return;
+
+            // If no marker is highlighted, find the nearest one at drop point
+            if (!hoverMarkerId) {
+                const rect = document.getElementById('map').getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const latlng = map.containerPointToLatLng([x, y]);
+                const nearest = findNearestMarker(latlng);
+                if (nearest) hoverMarkerId = nearest.id;
+            }
+
+            if (!hoverMarkerId) return;
 
             // Add photo to the location
             if (!photoLinks[hoverMarkerId]) photoLinks[hoverMarkerId] = [];
@@ -956,7 +991,24 @@
                 markers[l.id] = m;
             });
 
+            // Setup drag-drop on map container (must be after Leaflet initializes)
+            setupMapDragDrop();
+
             drawRoute();
+        }
+
+        function setupMapDragDrop() {
+            const mapContainer = map.getContainer();
+
+            // Use capture phase to intercept before Leaflet's handlers
+            mapContainer.addEventListener('dragover', mapDragOver, true);
+            mapContainer.addEventListener('dragleave', mapDragLeave, true);
+            mapContainer.addEventListener('drop', mapDrop, true);
+
+            // Also prevent default on dragenter to enable drop
+            mapContainer.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+            }, true);
         }
 
         let routeLine = null;
