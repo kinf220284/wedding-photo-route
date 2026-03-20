@@ -649,6 +649,179 @@
             margin-left: 6px;
             font-weight: 600;
         }
+
+        /* Add Spot Modal */
+        .spot-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 2500;
+            align-items: center;
+            justify-content: center;
+        }
+        .spot-modal.open { display: flex; }
+        .spot-modal-content {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .spot-modal h3 {
+            color: #d4c4a8;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+        .spot-form-group {
+            margin-bottom: 16px;
+        }
+        .spot-form-group label {
+            display: block;
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .spot-form-group input,
+        .spot-form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #eee;
+            font-size: 0.85rem;
+        }
+        .spot-form-group input:focus,
+        .spot-form-group select:focus {
+            outline: none;
+            border-color: #3d9d94;
+        }
+        .spot-form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .spot-form-actions button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: none;
+        }
+        .spot-btn-cancel {
+            background: #333;
+            color: #888;
+        }
+        .spot-btn-cancel:hover { background: #444; }
+        .spot-btn-save {
+            background: #3d9d94;
+            color: #111;
+            font-weight: 600;
+        }
+        .spot-btn-save:hover { background: #4ab3a8; }
+        .coord-hint {
+            font-size: 0.65rem;
+            color: #555;
+            margin-top: 4px;
+        }
+        .add-act-spot {
+            width: 24px;
+            height: 24px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 50%;
+            color: #888;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .add-act-spot:hover { background: #333; color: #3d9d94; border-color: #3d9d94; }
+
+        /* Photo Carousel */
+        .photo-carousel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 3500;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-carousel.open { display: flex; }
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .carousel-img {
+            max-width: 90%;
+            max-height: 85%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .carousel-nav:hover { background: rgba(255,255,255,0.2); }
+        .carousel-nav.prev { left: 20px; }
+        .carousel-nav.next { right: 20px; }
+        .carousel-nav:disabled { opacity: 0.3; cursor: default; }
+        .carousel-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .carousel-close:hover { color: #fff; }
+        .carousel-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .carousel-location {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #d4c4a8;
+            font-size: 1rem;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -656,6 +829,7 @@
         <h1>WEDDING PHOTO ROUTE</h1>
         <div class="route">CITY HALL - SOHO - GREENWICH VILLAGE - HUDSON RIVER</div>
         <div class="header-buttons">
+            <button class="header-btn" onclick="openSpotModal()">+ Add Spot</button>
             <button class="header-btn" onclick="copyRouteLink()">Copy Link</button>
             <button class="header-btn" onclick="exportRoute()">Export JSON</button>
             <button class="header-btn" onclick="document.getElementById('import-file').click()">Import</button>
@@ -680,6 +854,7 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a1-budget">0 min</span>
+                        <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(1)" title="Add spot to Act I">+</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -694,6 +869,7 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a2-budget">0 min</span>
+                        <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(2)" title="Add spot to Act II">+</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -708,6 +884,7 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a3-budget">0 min</span>
+                        <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(3)" title="Add spot to Act III">+</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -742,6 +919,66 @@
         <div class="inspo-modal" id="inspo-modal" onclick="closeInspoModal()">
             <span class="inspo-modal-close">&times;</span>
             <img id="inspo-modal-img" src="" />
+        </div>
+
+        <!-- Add Spot Modal -->
+        <div class="spot-modal" id="spot-modal" onclick="if(event.target===this)closeSpotModal()">
+            <div class="spot-modal-content">
+                <h3>ADD CUSTOM SPOT</h3>
+                <div class="spot-form-group">
+                    <label>Coordinates *</label>
+                    <input type="text" id="spot-coords" placeholder="40°43'20.3&quot;N 73°59'49.9&quot;W" />
+                    <div class="coord-hint">Paste from Google Maps (DMS or decimal)</div>
+                </div>
+                <div class="spot-form-group">
+                    <label>Name *</label>
+                    <input type="text" id="spot-name" placeholder="My Photo Spot" />
+                </div>
+                <div class="spot-form-group">
+                    <label>Act *</label>
+                    <select id="spot-act">
+                        <option value="1">Act I - City Hall</option>
+                        <option value="2">Act II - SoHo</option>
+                        <option value="3">Act III - Village & River</option>
+                    </select>
+                </div>
+                <div class="spot-form-group">
+                    <label>Duration (minutes) *</label>
+                    <input type="number" id="spot-dur" value="15" min="5" max="60" />
+                </div>
+                <div class="spot-form-group">
+                    <label>Type</label>
+                    <input type="text" id="spot-type" placeholder="Street, Cafe, Park..." />
+                </div>
+                <div class="spot-form-group">
+                    <label>Tags (comma-separated)</label>
+                    <input type="text" id="spot-tags" placeholder="Golden Hour, Romantic" />
+                </div>
+                <div class="spot-form-group">
+                    <label>Crowd Level</label>
+                    <select id="spot-crowd">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="spot-form-actions">
+                    <button class="spot-btn-cancel" onclick="closeSpotModal()">Cancel</button>
+                    <button class="spot-btn-save" onclick="saveCustomSpot()">Add Spot</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo Carousel -->
+        <div class="photo-carousel" id="photo-carousel" onclick="if(event.target===this)closeCarousel()">
+            <span class="carousel-close" onclick="closeCarousel()">&times;</span>
+            <span class="carousel-location" id="carousel-location"></span>
+            <div class="carousel-container">
+                <button class="carousel-nav prev" id="carousel-prev" onclick="carouselNav(-1)">&#10094;</button>
+                <img class="carousel-img" id="carousel-img" src="" />
+                <button class="carousel-nav next" id="carousel-next" onclick="carouselNav(1)">&#10095;</button>
+            </div>
+            <span class="carousel-counter" id="carousel-counter"></span>
         </div>
 
         <div class="map-container">
@@ -887,6 +1124,13 @@
         let hoverMarkerId = null; // Track which marker is highlighted during drag
         let customInspoPhotos = []; // Store user-added photos as base64
         let props = []; // Props to bring { name: string, checked: boolean }
+        let customSpots = []; // User-added spots
+        let hiddenInspoPhotos = []; // Built-in photos user has hidden
+
+        // Carousel state
+        let carouselPhotos = [];
+        let carouselIndex = 0;
+        let carouselLocId = null;
 
         // ===== PERSISTENCE FUNCTIONS =====
         function saveState() {
@@ -896,7 +1140,9 @@
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
                 photoLinks: photoLinks,
                 customInspoPhotos: customInspoPhotos,
-                props: props
+                props: props,
+                customSpots: customSpots,
+                hiddenInspoPhotos: hiddenInspoPhotos
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
@@ -938,6 +1184,18 @@
             if (state.props) {
                 props = state.props;
             }
+            if (state.customSpots) {
+                customSpots = state.customSpots;
+                // Add custom spots back to locs array
+                customSpots.forEach(spot => {
+                    if (!locs.find(l => l.id === spot.id)) {
+                        locs.push(spot);
+                    }
+                });
+            }
+            if (state.hiddenInspoPhotos) {
+                hiddenInspoPhotos = state.hiddenInspoPhotos;
+            }
         }
 
         function exportRoute() {
@@ -948,7 +1206,9 @@
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
                 photoLinks: photoLinks,
                 customInspoPhotos: customInspoPhotos,
-                props: props
+                props: props,
+                customSpots: customSpots,
+                hiddenInspoPhotos: hiddenInspoPhotos
             };
             const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1120,7 +1380,7 @@
                 if (markers[l.id]) {
                     const linked = photoLinks[l.id] || [];
                     const linkedHtml = linked.length ? `<div style="margin-bottom:8px;">${linked.map(p =>
-                        `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;" />`
+                        `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;cursor:pointer;" onclick="openCarousel(${l.id},'${p}')" />`
                     ).join('')}</div>` : '';
                     const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
                     markers[l.id].setPopupContent(`
@@ -1133,6 +1393,7 @@
                             <span style="color:#888;font-size:0.8em;">${l.type} - ${l.dur}min</span>
                             ${l.hours ? `<br><span style="color:#3d9d94;font-size:0.75em;">${l.hours}</span>` : ''}
                             <br><a href="${gmapUrl}" target="_blank" style="color:#e8c547;font-size:0.7em;text-decoration:none;">View on Google Maps</a>
+                            ${l.custom ? `<br><span style="color:#e85555;font-size:0.7em;cursor:pointer;" onclick="deleteCustomSpot(${l.id})">Delete spot</span>` : ''}
                         </div>
                     `);
                 }
@@ -1296,7 +1557,7 @@
                 const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
                 const linked = photoLinks[l.id] || [];
                 const linkedHtml = linked.length ? `<div style="margin-bottom:8px;">${linked.map(p =>
-                    `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;" />`
+                    `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;cursor:pointer;" onclick="openCarousel(${l.id},'${p}')" />`
                 ).join('')}</div>` : '';
                 const m = L.marker([l.lat, l.lng], {
                     icon: makeIcon(l.act, l.on, getGlobalSeq(l)), opacity: l.on ? 1 : 0.35
@@ -1310,6 +1571,7 @@
                         <span style="color:#888;font-size:0.8em;">${l.type} - ${l.dur}min</span>
                         ${l.hours ? `<br><span style="color:#3d9d94;font-size:0.75em;">${l.hours}</span>` : ''}
                         <br><a href="${gmapUrl}" target="_blank" style="color:#e8c547;font-size:0.7em;text-decoration:none;">View on Google Maps</a>
+                        ${l.custom ? `<br><span style="color:#e85555;font-size:0.7em;cursor:pointer;" onclick="deleteCustomSpot(${l.id})">Delete spot</span>` : ''}
                     </div>
                 `, { maxWidth: 220 });
                 markers[l.id] = m;
@@ -1708,19 +1970,22 @@
                 </div>
             `}).join('');
 
-            // Built-in photos (no delete button)
-            const builtInHtml = inspoPhotos.map(photo => {
-                const linked = isPhotoLinked(photo);
-                return `
-                <div class="inspo-thumb-wrap ${linked ? 'linked' : ''}">
-                    <img class="inspo-thumb ${linked ? 'linked' : ''}" src="${photo}"
-                         draggable="true"
-                         ondragstart="dragPhoto(event,'${photo}')"
-                         ondragend="dragEnd(event)"
-                         onclick="openInspoModal('${photo}')"
-                         onerror="this.parentElement.style.display='none'" />
-                </div>
-            `}).join('');
+            // Built-in photos (with delete button, filtered by hidden)
+            const builtInHtml = inspoPhotos
+                .filter(photo => !hiddenInspoPhotos.includes(photo))
+                .map(photo => {
+                    const linked = isPhotoLinked(photo);
+                    return `
+                    <div class="inspo-thumb-wrap ${linked ? 'linked' : ''}">
+                        <img class="inspo-thumb ${linked ? 'linked' : ''}" src="${photo}"
+                             draggable="true"
+                             ondragstart="dragPhoto(event,'${photo}')"
+                             ondragend="dragEnd(event)"
+                             onclick="openInspoModal('${photo}')"
+                             onerror="this.parentElement.style.display='none'" />
+                        <button class="inspo-delete" onclick="event.stopPropagation();hideInspoPhoto('${photo}')">x</button>
+                    </div>
+                `}).join('');
 
             // Add placeholder at the end
             const addPlaceholder = `
@@ -1823,6 +2088,220 @@
             saveState();
             renderProps();
             showToast('Prop removed');
+        }
+
+        // ===== CUSTOM SPOTS =====
+
+        // Parse DMS or decimal coordinates
+        function parseCoordinates(input) {
+            input = input.trim();
+
+            // Try DMS format: 40°43'20.3"N 73°59'49.9"W
+            const dmsRegex = /(\d+)[°](\d+)['](\d+\.?\d*)["]?\s*([NS])\s*(\d+)[°](\d+)['](\d+\.?\d*)["]?\s*([EW])/i;
+            const dmsMatch = input.match(dmsRegex);
+
+            if (dmsMatch) {
+                let lat = parseFloat(dmsMatch[1]) + parseFloat(dmsMatch[2])/60 + parseFloat(dmsMatch[3])/3600;
+                let lng = parseFloat(dmsMatch[5]) + parseFloat(dmsMatch[6])/60 + parseFloat(dmsMatch[7])/3600;
+                if (dmsMatch[4].toUpperCase() === 'S') lat = -lat;
+                if (dmsMatch[8].toUpperCase() === 'W') lng = -lng;
+                return { lat, lng };
+            }
+
+            // Try decimal format: 40.7223, -73.9972 or 40.7223 -73.9972
+            const decRegex = /(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/;
+            const decMatch = input.match(decRegex);
+
+            if (decMatch) {
+                return { lat: parseFloat(decMatch[1]), lng: parseFloat(decMatch[2]) };
+            }
+
+            return null;
+        }
+
+        function openSpotModal(act) {
+            document.getElementById('spot-modal').classList.add('open');
+            document.getElementById('spot-coords').value = '';
+            document.getElementById('spot-name').value = '';
+            document.getElementById('spot-act').value = act || '1';
+            document.getElementById('spot-dur').value = '15';
+            document.getElementById('spot-type').value = '';
+            document.getElementById('spot-tags').value = '';
+            document.getElementById('spot-crowd').value = 'low';
+        }
+
+        function closeSpotModal() {
+            document.getElementById('spot-modal').classList.remove('open');
+        }
+
+        function saveCustomSpot() {
+            const coords = parseCoordinates(document.getElementById('spot-coords').value);
+            const name = document.getElementById('spot-name').value.trim();
+            const act = parseInt(document.getElementById('spot-act').value);
+            const dur = parseInt(document.getElementById('spot-dur').value);
+            const type = document.getElementById('spot-type').value.trim() || 'Custom';
+            const tagsStr = document.getElementById('spot-tags').value;
+            const crowd = document.getElementById('spot-crowd').value;
+
+            if (!coords) {
+                showToast('Invalid coordinates format');
+                return;
+            }
+            if (!name) {
+                showToast('Please enter a spot name');
+                return;
+            }
+
+            const maxId = Math.max(...locs.map(l => l.id), ...customSpots.map(s => s.id), 999);
+            const newId = maxId + 1;
+
+            const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+
+            const spot = {
+                id: newId,
+                n: name,
+                lat: coords.lat,
+                lng: coords.lng,
+                act: act,
+                type: type,
+                dur: dur,
+                crowd: crowd,
+                on: true,
+                seq: null,
+                tags: tags,
+                img: `https://via.placeholder.com/400x250/222/666?text=${encodeURIComponent(name)}`,
+                hours: '',
+                custom: true
+            };
+
+            locs.push(spot);
+            customSpots.push(spot);
+
+            const actSelected = locs.filter(l => l.act === act && l.on);
+            spot.seq = actSelected.length;
+
+            addMarkerForSpot(spot);
+
+            saveState();
+            updateMarkerIcons();
+            render();
+            drawRoute();
+            calc();
+
+            closeSpotModal();
+            showToast(`Added: ${name}`);
+        }
+
+        function addMarkerForSpot(l) {
+            const gmapUrl = `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
+            const linked = photoLinks[l.id] || [];
+            const linkedHtml = linked.length ? `<div style="margin-bottom:8px;">${linked.map(p =>
+                `<img src="${p}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;margin-right:4px;cursor:pointer;" onclick="openCarousel(${l.id},'${p}')" />`
+            ).join('')}</div>` : '';
+            const m = L.marker([l.lat, l.lng], {
+                icon: makeIcon(l.act, l.on, getGlobalSeq(l)),
+                opacity: l.on ? 1 : 0.35
+            }).addTo(map).bindPopup(`
+                <div style="width:200px;">
+                    ${linkedHtml}
+                    <b style="color:#d4c4a8;">${l.n}</b><br>
+                    <span style="color:#888;font-size:0.8em;">${l.type} - ${l.dur}min</span>
+                    ${l.hours ? `<br><span style="color:#3d9d94;font-size:0.75em;">${l.hours}</span>` : ''}
+                    <br><a href="${gmapUrl}" target="_blank" style="color:#e8c547;font-size:0.7em;">View on Google Maps</a>
+                    ${l.custom ? `<br><span style="color:#e85555;font-size:0.7em;cursor:pointer;" onclick="deleteCustomSpot(${l.id})">Delete spot</span>` : ''}
+                </div>
+            `, { maxWidth: 220 });
+            markers[l.id] = m;
+        }
+
+        function deleteCustomSpot(id) {
+            const idx = locs.findIndex(l => l.id === id);
+            if (idx > -1) {
+                const spot = locs[idx];
+                if (markers[id]) {
+                    map.removeLayer(markers[id]);
+                    delete markers[id];
+                }
+                if (spot.on) {
+                    locs.filter(l => l.act === spot.act && l.on && l.seq > spot.seq)
+                        .forEach(l => l.seq--);
+                }
+                locs.splice(idx, 1);
+            }
+
+            const csIdx = customSpots.findIndex(s => s.id === id);
+            if (csIdx > -1) customSpots.splice(csIdx, 1);
+
+            delete photoLinks[id];
+
+            saveState();
+            updateMarkerIcons();
+            render();
+            renderInspoGallery();
+            drawRoute();
+            calc();
+            showToast('Spot deleted');
+        }
+
+        // ===== PHOTO CAROUSEL =====
+
+        function openCarousel(locId, startPhoto) {
+            carouselLocId = locId;
+            carouselPhotos = photoLinks[locId] || [];
+            if (carouselPhotos.length === 0) return;
+
+            carouselIndex = startPhoto ? carouselPhotos.indexOf(startPhoto) : 0;
+            if (carouselIndex < 0) carouselIndex = 0;
+
+            const loc = locs.find(l => l.id === locId);
+            document.getElementById('carousel-location').textContent = loc ? loc.n : '';
+
+            updateCarousel();
+            document.getElementById('photo-carousel').classList.add('open');
+        }
+
+        function closeCarousel() {
+            document.getElementById('photo-carousel').classList.remove('open');
+        }
+
+        function carouselNav(dir) {
+            carouselIndex += dir;
+            if (carouselIndex < 0) carouselIndex = carouselPhotos.length - 1;
+            if (carouselIndex >= carouselPhotos.length) carouselIndex = 0;
+            updateCarousel();
+        }
+
+        function updateCarousel() {
+            document.getElementById('carousel-img').src = carouselPhotos[carouselIndex];
+            document.getElementById('carousel-counter').textContent =
+                `${carouselIndex + 1} / ${carouselPhotos.length}`;
+            document.getElementById('carousel-prev').disabled = carouselPhotos.length <= 1;
+            document.getElementById('carousel-next').disabled = carouselPhotos.length <= 1;
+        }
+
+        // Keyboard navigation for carousel
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('photo-carousel').classList.contains('open')) return;
+            if (e.key === 'ArrowLeft') carouselNav(-1);
+            if (e.key === 'ArrowRight') carouselNav(1);
+            if (e.key === 'Escape') closeCarousel();
+        });
+
+        // ===== HIDE INSPO PHOTOS =====
+
+        function hideInspoPhoto(photo) {
+            // Unlink from any locations first
+            Object.keys(photoLinks).forEach(locId => {
+                photoLinks[locId] = photoLinks[locId].filter(p => p !== photo);
+                if (photoLinks[locId].length === 0) delete photoLinks[locId];
+            });
+
+            hiddenInspoPhotos.push(photo);
+            saveState();
+            renderInspoGallery();
+            render();
+            updatePopups();
+            showToast('Photo removed');
         }
     </script>
 </body>
