@@ -494,6 +494,93 @@
         }
         .inspo-thumb-wrap:hover .inspo-delete { opacity: 1; }
 
+        /* Props section */
+        .props-section {
+            padding: 20px;
+            background: #121212;
+            border-top: 1px solid #222;
+        }
+        .props-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .props-header h3 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #888;
+            margin: 0;
+        }
+        .props-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .prop-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .prop-item:hover { background: #222; }
+        .prop-item.checked { opacity: 0.5; }
+        .prop-item.checked .prop-name { text-decoration: line-through; }
+        .prop-check {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.6rem;
+            color: #111;
+        }
+        .prop-item.checked .prop-check {
+            background: #3d9d94;
+            border-color: #3d9d94;
+        }
+        .prop-item.checked .prop-check::after { content: '\2713'; }
+        .prop-name {
+            flex: 1;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        .prop-delete {
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border: none;
+            color: #555;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .prop-item:hover .prop-delete { opacity: 1; }
+        .prop-delete:hover { color: #e85555; }
+        .prop-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #eee;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+        .prop-input:focus {
+            outline: none;
+            border-color: #3d9d94;
+        }
+
         /* Photo Vibes styling for bonus items */
         .loc.photo-vibe {
             background: #1f1a20;
@@ -593,6 +680,15 @@
                 </div>
                 <input type="file" id="inspo-upload" accept="image/*" multiple style="display:none" onchange="handleInspoUpload(this.files)" />
                 <div class="inspo-grid" id="inspo-grid"></div>
+            </div>
+
+            <div class="props-section">
+                <div class="props-header">
+                    <h3>PROPS TO BRING</h3>
+                    <button class="add-inspo-btn" onclick="addProp()">+ Add</button>
+                </div>
+                <div class="props-list" id="props-list"></div>
+                <input type="text" id="prop-input" class="prop-input" placeholder="Add a prop..." onkeypress="if(event.key==='Enter')submitProp()" onblur="submitProp()" style="display:none" />
             </div>
         </div>
 
@@ -744,6 +840,7 @@
         const photoLinks = {}; // { locId: [photoPath, ...] }
         let hoverMarkerId = null; // Track which marker is highlighted during drag
         let customInspoPhotos = []; // Store user-added photos as base64
+        let props = []; // Props to bring { name: string, checked: boolean }
 
         // ===== PERSISTENCE FUNCTIONS =====
         function saveState() {
@@ -752,7 +849,8 @@
                 locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
                 photoLinks: photoLinks,
-                customInspoPhotos: customInspoPhotos
+                customInspoPhotos: customInspoPhotos,
+                props: props
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
@@ -791,6 +889,9 @@
             if (state.customInspoPhotos) {
                 customInspoPhotos = state.customInspoPhotos;
             }
+            if (state.props) {
+                props = state.props;
+            }
         }
 
         function exportRoute() {
@@ -800,7 +901,8 @@
                 locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
                 photoLinks: photoLinks,
-                customInspoPhotos: customInspoPhotos
+                customInspoPhotos: customInspoPhotos,
+                props: props
             };
             const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1608,6 +1710,57 @@
 
         // Initialize inspo gallery on load
         document.addEventListener('DOMContentLoaded', renderInspoGallery);
+
+        // ===== PROPS FUNCTIONS =====
+        function renderProps() {
+            const list = document.getElementById('props-list');
+            if (props.length === 0) {
+                list.innerHTML = '<div style="color:#555;font-size:0.75rem;padding:8px 0;">No props yet. Click + Add to add items.</div>';
+                return;
+            }
+            list.innerHTML = props.map((p, i) => `
+                <div class="prop-item ${p.checked ? 'checked' : ''}" onclick="toggleProp(${i})">
+                    <div class="prop-check"></div>
+                    <span class="prop-name">${p.name}</span>
+                    <button class="prop-delete" onclick="event.stopPropagation();deleteProp(${i})">x</button>
+                </div>
+            `).join('');
+        }
+
+        function addProp() {
+            const input = document.getElementById('prop-input');
+            input.style.display = 'block';
+            input.focus();
+        }
+
+        function submitProp() {
+            const input = document.getElementById('prop-input');
+            const name = input.value.trim();
+            if (name) {
+                props.push({ name, checked: false });
+                saveState();
+                renderProps();
+                showToast('Prop added');
+            }
+            input.value = '';
+            input.style.display = 'none';
+        }
+
+        function toggleProp(index) {
+            props[index].checked = !props[index].checked;
+            saveState();
+            renderProps();
+        }
+
+        function deleteProp(index) {
+            props.splice(index, 1);
+            saveState();
+            renderProps();
+            showToast('Prop removed');
+        }
+
+        // Initialize props on load
+        document.addEventListener('DOMContentLoaded', renderProps);
     </script>
 </body>
 </html>
