@@ -1254,7 +1254,9 @@
             const state = {
                 l: locs.filter(l => l.on).map(l => ({ i: l.id, s: l.seq })),
                 b: bonus.filter(b => b.on).map(b => b.id),
-                p: photoLinks
+                p: photoLinks,
+                cs: customSpots,
+                hi: hiddenInspoPhotos
             };
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
             history.replaceState(null, '', '#' + encoded);
@@ -1268,6 +1270,22 @@
                 locs.forEach(l => { l.on = false; l.seq = null; });
                 bonus.forEach(b => { b.on = false; });
                 Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
+
+                // Restore custom spots first (add to locs array)
+                if (state.cs) {
+                    customSpots = state.cs;
+                    customSpots.forEach(spot => {
+                        if (!locs.find(l => l.id === spot.id)) {
+                            locs.push(spot);
+                        }
+                    });
+                }
+
+                // Restore hidden inspo photos
+                if (state.hi) {
+                    hiddenInspoPhotos = state.hi;
+                }
+
                 state.l?.forEach(s => {
                     const loc = locs.find(l => l.id === s.i);
                     if (loc) { loc.on = true; loc.seq = s.s; }
