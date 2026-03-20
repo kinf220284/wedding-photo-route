@@ -1279,6 +1279,8 @@
             initSequence();
             initMap();
             render();
+            renderInspoGallery();  // After state is loaded so photoLinks is populated
+            renderProps();         // After state is loaded so props is populated
             await drawRoute();
             calc();
         });
@@ -1775,9 +1777,6 @@
             document.getElementById('inspo-modal').classList.remove('open');
         }
 
-        // Initialize inspo gallery on load
-        document.addEventListener('DOMContentLoaded', renderInspoGallery);
-
         // ===== PROPS FUNCTIONS =====
         function renderProps() {
             const list = document.getElementById('props-list');
@@ -1825,9 +1824,6 @@
             renderProps();
             showToast('Prop removed');
         }
-
-        // Initialize props on load
-        document.addEventListener('DOMContentLoaded', renderProps);
     </script>
 </body>
 </html>
