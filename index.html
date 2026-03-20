@@ -234,8 +234,8 @@
             transition: all 0.15s;
         }
         .bonus-item:hover { border-color: #333; }
-        .bonus-item.on { border-color: #3d9d94; background: #162220; }
-        .bonus-item.on .bonus-add { background: #3d9d94; color: #111; }
+        .bonus-item.on { border-color: #b794c0; background: #1f1a20; }
+        .bonus-item.on .bonus-add { background: #b794c0; color: #111; }
 
         .bonus-img {
             width: 80px;
@@ -413,6 +413,109 @@
 
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* Drop success animation */
+        @keyframes dropSuccess {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(61,157,148,0); }
+            50% { transform: scale(1.8); box-shadow: 0 0 30px rgba(61,157,148,0.8); }
+            100% { transform: scale(1); box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3d9d94;
+            color: #111;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            z-index: 3000;
+            animation: toastIn 0.3s ease-out;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Inspo gallery header */
+        .inspo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .inspo-header h3 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #888;
+            margin: 0;
+        }
+        .add-inspo-btn {
+            padding: 4px 12px;
+            background: #252525;
+            color: #888;
+            border: 1px solid #333;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .add-inspo-btn:hover { background: #333; color: #d4c4a8; border-color: #444; }
+
+        /* Custom inspo photo wrappers */
+        .inspo-thumb-wrap {
+            position: relative;
+            display: inline-block;
+        }
+        .inspo-delete {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: rgba(232,85,85,0.9);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+        }
+        .inspo-thumb-wrap:hover .inspo-delete { opacity: 1; }
+
+        /* Photo Vibes styling for bonus items */
+        .loc.photo-vibe {
+            background: #1f1a20;
+            border-left: 2px solid #b794c0;
+            opacity: 0.9;
+        }
+        .loc.photo-vibe .seq-num {
+            background: #b794c0;
+            font-size: 0.5rem;
+        }
+        .loc.photo-vibe .loc-type {
+            color: #b794c0;
+        }
+        .vibe-badge {
+            font-size: 0.5rem;
+            padding: 2px 6px;
+            background: #b794c0;
+            color: #111;
+            border-radius: 6px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -479,12 +582,16 @@
             </div>
 
             <div class="bonus">
-                <h3>MORE IDEAS <span>click to add</span></h3>
+                <h3>PHOTO VIBES <span>creative directions (no extra time)</span></h3>
                 <div id="bonus-list"></div>
             </div>
 
             <div class="inspo-gallery">
-                <h3>INSPO PHOTOS</h3>
+                <div class="inspo-header">
+                    <h3>INSPO PHOTOS</h3>
+                    <button class="add-inspo-btn" onclick="addInspoPhoto()">+ Add</button>
+                </div>
+                <input type="file" id="inspo-upload" accept="image/*" multiple style="display:none" onchange="handleInspoUpload(this.files)" />
                 <div class="inspo-grid" id="inspo-grid"></div>
             </div>
         </div>
@@ -610,6 +717,7 @@
         let map, markers = {};
         const photoLinks = {}; // { locId: [photoPath, ...] }
         let hoverMarkerId = null; // Track which marker is highlighted during drag
+        let customInspoPhotos = []; // Store user-added photos as base64
 
         // ===== PERSISTENCE FUNCTIONS =====
         function saveState() {
@@ -617,7 +725,8 @@
                 version: 1,
                 locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
-                photoLinks: photoLinks
+                photoLinks: photoLinks,
+                customInspoPhotos: customInspoPhotos
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
@@ -653,6 +762,9 @@
                 Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
                 Object.assign(photoLinks, state.photoLinks);
             }
+            if (state.customInspoPhotos) {
+                customInspoPhotos = state.customInspoPhotos;
+            }
         }
 
         function exportRoute() {
@@ -661,7 +773,8 @@
                 exportedAt: new Date().toISOString(),
                 locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
                 bonus: bonus.map(b => ({ id: b.id, on: b.on })),
-                photoLinks: photoLinks
+                photoLinks: photoLinks,
+                customInspoPhotos: customInspoPhotos
             };
             const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -779,10 +892,41 @@
             if (!photoLinks[locId]) photoLinks[locId] = [];
             if (!photoLinks[locId].includes(path)) {
                 photoLinks[locId].push(path);
+                showDropSuccess(locId);
                 saveState();
                 render();
                 updatePopups();
             }
+        }
+
+        // Show visual feedback when photo is linked to a marker
+        function showDropSuccess(locId) {
+            const loc = locs.find(l => l.id === locId);
+            if (!loc) return;
+
+            // Flash the marker
+            const marker = markers[locId];
+            if (marker) {
+                const el = marker.getElement();
+                if (el) {
+                    const inner = el.querySelector('div');
+                    if (inner) {
+                        inner.style.animation = 'dropSuccess 0.5s ease-out';
+                        setTimeout(() => { inner.style.animation = ''; }, 500);
+                    }
+                }
+            }
+
+            // Show toast
+            showToast(`Photo linked to ${loc.n}`);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
         }
 
         function unlinkPhoto(locId, path) {
@@ -882,6 +1026,7 @@
             if (!photoLinks[hoverMarkerId]) photoLinks[hoverMarkerId] = [];
             if (!photoLinks[hoverMarkerId].includes(path)) {
                 photoLinks[hoverMarkerId].push(path);
+                showDropSuccess(hoverMarkerId);
                 saveState();
                 render();
                 updatePopups();
@@ -1138,8 +1283,8 @@
         // Update end time display
         function updateEndTime() {
             let shootTime = 0, spots = 0;
+            // Only count actual locations, NOT bonus items (they're photo vibes, not time stops)
             locs.forEach(l => { if(l.on) { shootTime += l.dur; spots++; }});
-            bonus.forEach(b => { if(b.on) { shootTime += b.dur; spots++; }});
 
             const total = shootTime + cachedWalkTime;
             const startHour = 13;
@@ -1240,15 +1385,14 @@
                 };
 
                 const renderBonus = (b) => `
-                    <div class="loc on bonus-added" data-bid="${b.id}" onclick="toggleBonus(${b.id})">
+                    <div class="loc on photo-vibe" data-bid="${b.id}" onclick="toggleBonus(${b.id})">
                         <div class="chk"></div>
-                        <div class="seq-num">+</div>
+                        <div class="seq-num">~</div>
                         <div class="loc-info">
                             <div class="loc-top">
                                 <span class="loc-name">${b.n}</span>
-                                <span class="loc-type">Idea</span>
-                                <span class="idea-badge">FLEX</span>
-                                <span class="loc-dur">${b.dur}m</span>
+                                <span class="loc-type">Vibe</span>
+                                <span class="vibe-badge">PHOTO VIBE</span>
                             </div>
                             <div class="loc-tags">${b.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
                         </div>
@@ -1266,11 +1410,11 @@
                     <div class="bonus-content">
                         <div class="bonus-head">
                             <span class="bonus-name">${b.n}</span>
-                            <span class="bonus-add">${b.on?'Added':'+ Add'}</span>
+                            <span class="bonus-add">${b.on?'Active':'+ Add'}</span>
                         </div>
                         <div class="bonus-meta">
-                            <span class="bonus-dur">${b.dur}m - Act ${b.act}</span>
-                            <span class="bonus-crowd">${b.crowd}</span>
+                            <span class="bonus-dur">Act ${b.act}</span>
+                            <span class="bonus-crowd" style="color:#b794c0;">No extra time</span>
                         </div>
                         <div class="bonus-desc">${b.desc}</div>
                         <div class="bonus-tags">${b.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
@@ -1340,14 +1484,20 @@
         function calc() {
             const actT = {1:0, 2:0, 3:0};
 
+            // Only count actual locations, NOT bonus items (they're photo vibes, not time stops)
             locs.forEach(l => { if(l.on) { actT[l.act] += l.dur; }});
-            bonus.forEach(b => { if(b.on) { actT[b.act] += b.dur; }});
 
             // Update act budgets
             [1,2,3].forEach(a => {
                 const el = document.getElementById(`a${a}-budget`);
                 const p = actT[a] / BUDGET[a] * 100;
-                el.textContent = `${actT[a]}/${BUDGET[a]}`;
+                if (a === 1) {
+                    // Act 1: Show time/budget format
+                    el.textContent = `${actT[a]}/${BUDGET[a]}`;
+                } else {
+                    // Acts 2 & 3: Just show total minutes
+                    el.textContent = `${actT[a]} min`;
+                }
                 el.className = 'act-budget' + (p > 100 ? ' over' : p > 85 ? ' warn' : '');
             });
 
@@ -1365,7 +1515,9 @@
         // Render inspo gallery
         function renderInspoGallery() {
             const grid = document.getElementById('inspo-grid');
-            grid.innerHTML = inspoPhotos.map(photo => `
+
+            // Built-in photos (no delete button)
+            const builtInHtml = inspoPhotos.map(photo => `
                 <img class="inspo-thumb" src="${photo}"
                      draggable="true"
                      ondragstart="dragPhoto(event,'${photo}')"
@@ -1373,6 +1525,56 @@
                      onclick="openInspoModal('${photo}')"
                      onerror="this.style.display='none'" />
             `).join('');
+
+            // Custom photos (with delete button)
+            const customHtml = customInspoPhotos.map((photo, index) => `
+                <div class="inspo-thumb-wrap">
+                    <img class="inspo-thumb" src="${photo}"
+                         draggable="true"
+                         ondragstart="dragPhoto(event,'${photo}')"
+                         ondragend="dragEnd(event)"
+                         onclick="openInspoModal('${photo}')" />
+                    <button class="inspo-delete" onclick="event.stopPropagation();removeInspoPhoto(${index})">x</button>
+                </div>
+            `).join('');
+
+            grid.innerHTML = customHtml + builtInHtml;
+        }
+
+        // Add custom inspo photo
+        function addInspoPhoto() {
+            document.getElementById('inspo-upload').click();
+        }
+
+        function handleInspoUpload(files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    customInspoPhotos.push(e.target.result);
+                    saveState();
+                    renderInspoGallery();
+                    showToast('Photo added to gallery');
+                };
+                reader.readAsDataURL(file);
+            });
+            // Reset the input so the same file can be selected again
+            document.getElementById('inspo-upload').value = '';
+        }
+
+        function removeInspoPhoto(index) {
+            // Check if this photo is linked anywhere
+            const photoToRemove = customInspoPhotos[index];
+            Object.keys(photoLinks).forEach(locId => {
+                photoLinks[locId] = photoLinks[locId].filter(p => p !== photoToRemove);
+                if (photoLinks[locId].length === 0) delete photoLinks[locId];
+            });
+
+            customInspoPhotos.splice(index, 1);
+            saveState();
+            renderInspoGallery();
+            render();
+            updatePopups();
+            showToast('Photo removed');
         }
 
         function openInspoModal(src) {
