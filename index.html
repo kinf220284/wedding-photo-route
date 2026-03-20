@@ -1228,8 +1228,16 @@
                     applyState(state);
                     saveState();
                     initSequence();
+                    // Create markers for any new custom spots
+                    locs.forEach(l => {
+                        if (!markers[l.id]) {
+                            addMarkerForSpot(l);
+                        }
+                    });
                     updateMarkerIcons();
                     render();
+                    renderInspoGallery();
+                    renderProps();
                     drawRoute();
                     calc();
                     alert('Route imported successfully!');
@@ -1540,6 +1548,7 @@
             initSequence();
             initMap();
             render();
+            updateMarkerIcons();   // Ensure map markers match sidebar numbers
             renderInspoGallery();  // After state is loaded so photoLinks is populated
             renderProps();         // After state is loaded so props is populated
             await drawRoute();
@@ -1766,6 +1775,9 @@
                 if (markers[l.id]) {
                     markers[l.id].setIcon(makeIcon(l.act, l.on, getGlobalSeq(l)));
                     markers[l.id].setOpacity(l.on ? 1 : 0.35);
+                } else if (map) {
+                    // Create marker if it doesn't exist (e.g., custom spot from localStorage)
+                    addMarkerForSpot(l);
                 }
             });
         }
