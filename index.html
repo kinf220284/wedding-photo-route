@@ -546,7 +546,7 @@
                         <div class="act-meta">The Official Beginning</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <span class="act-budget" id="a1-budget">0/40</span>
+                        <span class="act-budget" id="a1-budget">0 min</span>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -560,7 +560,7 @@
                         <div class="act-meta">Books, Coffee, Cobblestones</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <span class="act-budget" id="a2-budget">0/100</span>
+                        <span class="act-budget" id="a2-budget">0 min</span>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -574,7 +574,7 @@
                         <div class="act-meta">Golden Hour Finale</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <span class="act-budget" id="a3-budget">0/100</span>
+                        <span class="act-budget" id="a3-budget">0 min</span>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -1487,17 +1487,11 @@
             // Only count actual locations, NOT bonus items (they're photo vibes, not time stops)
             locs.forEach(l => { if(l.on) { actT[l.act] += l.dur; }});
 
-            // Update act budgets
+            // Update act budgets - just show total minutes for all acts
             [1,2,3].forEach(a => {
                 const el = document.getElementById(`a${a}-budget`);
                 const p = actT[a] / BUDGET[a] * 100;
-                if (a === 1) {
-                    // Act 1: Show time/budget format
-                    el.textContent = `${actT[a]}/${BUDGET[a]}`;
-                } else {
-                    // Acts 2 & 3: Just show total minutes
-                    el.textContent = `${actT[a]} min`;
-                }
+                el.textContent = `${actT[a]} min`;
                 el.className = 'act-budget' + (p > 100 ? ' over' : p > 85 ? ' warn' : '');
             });
 
