@@ -82,6 +82,15 @@
         }
         .stat-item.warn strong { color: #e8c547; }
         .stat-item.over strong { color: #e85555; }
+        .stat-item.clickable {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .stat-item.clickable:hover {
+            background: rgba(61,157,148,0.2);
+        }
 
         /* Acts */
         .act { border-bottom: 1px solid #222; }
@@ -865,6 +874,21 @@
             text-align: center;
         }
 
+        /* Location Results */
+        .location-result {
+            padding: 12px;
+            background: #222;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+        .location-result:hover {
+            border-color: #3d9d94;
+            background: #1a2a25;
+        }
+
         /* Photo Carousel */
         .photo-carousel {
             display: none;
@@ -1134,9 +1158,14 @@
     <div class="container">
         <div class="sidebar">
             <div class="stats-bar">
+                <div class="stat-item clickable" onclick="openSessionModal()" title="Click to edit session time">
+                    <span id="s-start">1:00 PM</span> → <strong id="s-end-time">1:00 PM</strong>
+                </div>
                 <div class="stat-item"><strong id="s-spots">0</strong> spots</div>
                 <div class="stat-item">Walking <strong id="s-walk">0</strong>min</div>
-                <div class="stat-item" id="s-end">Est. end <strong>1:00 PM</strong></div>
+                <div class="stat-item clickable" onclick="openLocationModal()" title="Click to set map location">
+                    📍 <span id="s-location">Set Location</span>
+                </div>
             </div>
 
             <div class="act" data-act="1">
@@ -1298,6 +1327,57 @@
             </div>
         </div>
 
+        <!-- Session Settings Modal -->
+        <div class="spot-modal" id="session-modal" onclick="if(event.target===this)closeSessionModal()">
+            <div class="spot-modal-content" style="max-width:350px;">
+                <h3>SESSION SETTINGS</h3>
+                <div class="spot-form-group">
+                    <label>Session Name</label>
+                    <input type="text" id="session-name" placeholder="Photo Session" />
+                </div>
+                <div class="spot-form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="session-start-time" value="13:00" />
+                </div>
+                <div class="spot-form-group">
+                    <label>Quick Presets</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <button class="spot-btn-cancel" style="padding:6px 12px;font-size:0.7rem;" onclick="setSessionTime(6,0)">6:00 AM</button>
+                        <button class="spot-btn-cancel" style="padding:6px 12px;font-size:0.7rem;" onclick="setSessionTime(10,0)">10:00 AM</button>
+                        <button class="spot-btn-cancel" style="padding:6px 12px;font-size:0.7rem;" onclick="setSessionTime(13,0)">1:00 PM</button>
+                        <button class="spot-btn-cancel" style="padding:6px 12px;font-size:0.7rem;" onclick="setSessionTime(16,0)">4:00 PM</button>
+                        <button class="spot-btn-cancel" style="padding:6px 12px;font-size:0.7rem;" onclick="setSessionTime(17,30)">5:30 PM</button>
+                    </div>
+                </div>
+                <div class="spot-form-actions">
+                    <button class="spot-btn-cancel" onclick="closeSessionModal()">Cancel</button>
+                    <button class="spot-btn-save" onclick="saveSessionSettings()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Modal -->
+        <div class="spot-modal" id="location-modal" onclick="if(event.target===this)closeLocationModal()">
+            <div class="spot-modal-content" style="max-width:400px;">
+                <h3>SET MAP LOCATION</h3>
+                <div class="spot-form-group">
+                    <label>City, Address, or Zip Code</label>
+                    <input type="text" id="location-search" placeholder="e.g., Brooklyn NY, 90210, Central Park" />
+                    <div class="coord-hint">Enter any location to center your map</div>
+                </div>
+                <div id="location-results" style="max-height:200px;overflow-y:auto;margin:10px 0;"></div>
+                <div id="location-current" style="padding:10px;background:#222;border-radius:6px;margin:10px 0;display:none;">
+                    <div style="color:#888;font-size:0.7rem;">Current location:</div>
+                    <div id="location-current-name" style="color:#d4c4a8;font-size:0.85rem;"></div>
+                </div>
+                <div class="spot-form-actions">
+                    <button class="spot-btn-cancel" onclick="closeLocationModal()">Cancel</button>
+                    <button class="spot-btn-cancel" onclick="searchLocation()" style="background:#3d9d94;color:#111;">Search</button>
+                    <button class="spot-btn-cancel" onclick="useCurrentLocation()">📍 Use My Location</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Photo Carousel -->
         <div class="photo-carousel" id="photo-carousel" onclick="if(event.target===this)closeCarousel()">
             <span class="carousel-close" onclick="closeCarousel()">&times;</span>
@@ -1340,6 +1420,15 @@
             2: { title: "ACT II", subtitle: "Main Route" },
             3: { title: "ACT III", subtitle: "Grand Finale" }
         };
+
+        // Session settings - user-editable
+        let sessionSettings = {
+            startTime: 13 * 60, // Minutes from midnight (13:00 = 1:00 PM)
+            sessionName: "Photo Session"
+        };
+
+        // Map center location (for sharing)
+        let mapCenter = null; // { lat, lng, name, zoom }
 
         // All inspo photos - paths relative to index.html
         const inspoPhotos = [
@@ -1431,7 +1520,9 @@
                 props: props,
                 customSpots: customSpots,
                 hiddenInspoPhotos: hiddenInspoPhotos,
-                actNames: actNames
+                actNames: actNames,
+                sessionSettings: sessionSettings,
+                mapCenter: mapCenter
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
@@ -1499,6 +1590,12 @@
             if (state.actNames) {
                 actNames = state.actNames;
             }
+            if (state.sessionSettings) {
+                sessionSettings = state.sessionSettings;
+            }
+            if (state.mapCenter) {
+                mapCenter = state.mapCenter;
+            }
         }
 
         function exportRoute() {
@@ -1512,7 +1609,9 @@
                 props: props,
                 customSpots: customSpots,
                 hiddenInspoPhotos: hiddenInspoPhotos,
-                actNames: actNames
+                actNames: actNames,
+                sessionSettings: sessionSettings,
+                mapCenter: mapCenter
             };
             const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1564,6 +1663,8 @@
                 hi: hiddenInspoPhotos,
                 pr: props, // Phase 1 fix: Include props
                 an: actNames, // Act names
+                ss: sessionSettings, // Session settings (start time, name)
+                mc: mapCenter, // Map center location
                 cp: customInspoPhotos.length // Custom photo count (not actual photos - too large)
             };
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
@@ -1590,6 +1691,8 @@
                     if (state.hi) hiddenInspoPhotos = state.hi;
                     if (state.pr) props = state.pr; // Phase 1 fix: Load props
                     if (state.an) actNames = state.an; // Load act names
+                    if (state.ss) sessionSettings = state.ss; // Load session settings
+                    if (state.mc) mapCenter = state.mc; // Load map center
 
                     // Show message if shared route had custom photos
                     if (state.cp > 0) {
@@ -1903,11 +2006,15 @@
         });
 
         function initMap() {
-            // Determine initial view based on locations
+            // Determine initial view: saved mapCenter > first location > user geolocation > US center
             let initialView = [40.0, -95.0]; // US center as default
             let initialZoom = 4;
 
-            if (locs.length > 0) {
+            if (mapCenter && mapCenter.lat && mapCenter.lng) {
+                // Use saved map center
+                initialView = [mapCenter.lat, mapCenter.lng];
+                initialZoom = mapCenter.zoom || 13;
+            } else if (locs.length > 0) {
                 // Center on first location
                 initialView = [locs[0].lat, locs[0].lng];
                 initialZoom = 14;
@@ -1918,8 +2025,8 @@
                 attribution: 'OSM CARTO', subdomains: 'abcd', maxZoom: 20
             }).addTo(map);
 
-            // Try to get user's location if no spots exist
-            if (locs.length === 0 && navigator.geolocation) {
+            // Try to get user's location if no spots and no saved center
+            if (locs.length === 0 && !mapCenter && navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         map.setView([pos.coords.latitude, pos.coords.longitude], 12);
@@ -2097,6 +2204,15 @@
             updateEndTime();
         }
 
+        // Format time from minutes since midnight to 12-hour format
+        function formatTime(mins) {
+            const hr = Math.floor(mins / 60);
+            const min = mins % 60;
+            const hr12 = hr > 12 ? hr - 12 : (hr === 0 ? 12 : hr);
+            const ampm = hr >= 12 ? 'PM' : 'AM';
+            return `${hr12}:${min.toString().padStart(2,'0')} ${ampm}`;
+        }
+
         // Update end time display
         function updateEndTime() {
             let shootTime = 0, spots = 0;
@@ -2104,18 +2220,26 @@
             locs.forEach(l => { if(l.on) { shootTime += l.dur; spots++; }});
 
             const total = shootTime + cachedWalkTime;
-            const startHour = 13;
-            const endMins = startHour * 60 + total;
-            const endHr = Math.floor(endMins / 60);
-            const endMin = endMins % 60;
-            const endHr12 = endHr > 12 ? endHr - 12 : endHr;
-            const ampm = endHr >= 12 ? 'PM' : 'AM';
-            const endStr = `${endHr12}:${endMin.toString().padStart(2,'0')} ${ampm}`;
+            const startMins = sessionSettings.startTime;
+            const endMins = startMins + total;
+
+            // Update start time display
+            document.getElementById('s-start').textContent = formatTime(startMins);
+
+            // Update end time display
+            document.getElementById('s-end-time').textContent = formatTime(endMins);
 
             document.getElementById('s-spots').textContent = spots;
-            const endEl = document.getElementById('s-end');
-            endEl.innerHTML = `Est. end <strong>${endStr}</strong>`;
-            endEl.className = 'stat-item' + (total > TOTAL ? ' over' : total > TOTAL*0.85 ? ' warn' : '');
+
+            // Update location display
+            const locEl = document.getElementById('s-location');
+            if (mapCenter && mapCenter.name) {
+                locEl.textContent = mapCenter.name.length > 20
+                    ? mapCenter.name.substring(0, 20) + '...'
+                    : mapCenter.name;
+            } else {
+                locEl.textContent = 'Set Location';
+            }
         }
 
         function makeIcon(act, on, globalSeq) {
@@ -2936,6 +3060,150 @@
             closeImportModal();
             showToast(`Imported ${selected.length} locations`);
         }
+
+        // ===== SESSION SETTINGS =====
+
+        function openSessionModal() {
+            document.getElementById('session-modal').classList.add('open');
+            document.getElementById('session-name').value = sessionSettings.sessionName || 'Photo Session';
+
+            // Convert minutes to HH:MM format
+            const hours = Math.floor(sessionSettings.startTime / 60);
+            const mins = sessionSettings.startTime % 60;
+            document.getElementById('session-start-time').value =
+                `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}`;
+        }
+
+        function closeSessionModal() {
+            document.getElementById('session-modal').classList.remove('open');
+        }
+
+        function setSessionTime(hours, mins) {
+            document.getElementById('session-start-time').value =
+                `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}`;
+        }
+
+        function saveSessionSettings() {
+            const name = document.getElementById('session-name').value.trim();
+            const timeStr = document.getElementById('session-start-time').value;
+            const [hours, mins] = timeStr.split(':').map(Number);
+
+            sessionSettings.sessionName = name || 'Photo Session';
+            sessionSettings.startTime = hours * 60 + mins;
+
+            saveState();
+            updateEndTime();
+            closeSessionModal();
+            showToast('Session settings saved');
+        }
+
+        // ===== LOCATION CENTERING =====
+
+        function openLocationModal() {
+            document.getElementById('location-modal').classList.add('open');
+            document.getElementById('location-search').value = '';
+            document.getElementById('location-results').innerHTML = '';
+
+            // Show current location if set
+            const currentEl = document.getElementById('location-current');
+            if (mapCenter && mapCenter.name) {
+                document.getElementById('location-current-name').textContent = mapCenter.name;
+                currentEl.style.display = 'block';
+            } else {
+                currentEl.style.display = 'none';
+            }
+        }
+
+        function closeLocationModal() {
+            document.getElementById('location-modal').classList.remove('open');
+        }
+
+        async function searchLocation() {
+            const query = document.getElementById('location-search').value.trim();
+            if (!query) {
+                showToast('Please enter a location');
+                return;
+            }
+
+            const resultsEl = document.getElementById('location-results');
+            resultsEl.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">Searching...</div>';
+
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    resultsEl.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">No results found</div>';
+                    return;
+                }
+
+                resultsEl.innerHTML = data.map((place, i) => `
+                    <div class="location-result" onclick="selectLocation(${place.lat}, ${place.lon}, '${place.display_name.replace(/'/g, "\\'")}')">
+                        <div style="color:#eee;font-size:0.85rem;">${place.display_name.split(',').slice(0,2).join(',')}</div>
+                        <div style="color:#666;font-size:0.7rem;">${place.display_name}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                resultsEl.innerHTML = '<div style="color:#e85555;text-align:center;padding:20px;">Search failed. Try again.</div>';
+            }
+        }
+
+        function selectLocation(lat, lng, name) {
+            mapCenter = {
+                lat: parseFloat(lat),
+                lng: parseFloat(lng),
+                name: name.split(',').slice(0, 2).join(',').trim(),
+                zoom: 13
+            };
+
+            map.setView([mapCenter.lat, mapCenter.lng], mapCenter.zoom);
+
+            saveState();
+            updateEndTime();
+            closeLocationModal();
+            showToast(`Map centered on ${mapCenter.name}`);
+        }
+
+        function useCurrentLocation() {
+            if (!navigator.geolocation) {
+                showToast('Geolocation not supported');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+
+                    // Reverse geocode to get location name
+                    try {
+                        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        const name = data.address ?
+                            `${data.address.city || data.address.town || data.address.village || 'Unknown'}, ${data.address.state || data.address.country || ''}`.trim() :
+                            'Current Location';
+                        selectLocation(lat, lng, name);
+                    } catch (e) {
+                        selectLocation(lat, lng, 'Current Location');
+                    }
+                },
+                (err) => {
+                    showToast('Could not get your location');
+                }
+            );
+        }
+
+        // Handle Enter key in location search
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('location-search');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') searchLocation();
+                });
+            }
+        });
 
         // ===== PHOTO CAROUSEL =====
 
