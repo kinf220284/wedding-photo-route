@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wedding Photo Route | 1-5 PM</title>
+    <title>Photo Route Planner</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -756,6 +756,114 @@
             transition: all 0.15s;
         }
         .add-act-spot:hover { background: #333; color: #3d9d94; border-color: #3d9d94; }
+        .edit-act-btn {
+            width: 24px;
+            height: 24px;
+            background: transparent;
+            border: none;
+            color: #555;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .edit-act-btn:hover { color: #d4c4a8; }
+
+        /* Empty State */
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #555;
+        }
+        .empty-state-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            font-size: 0.75rem;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .empty-state-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            background: #3d9d94;
+            color: #111;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.15s;
+        }
+        .empty-state-btn:hover { background: #4ab5ab; }
+        .empty-state-btn.secondary {
+            background: #252525;
+            color: #888;
+            border: 1px solid #333;
+        }
+        .empty-state-btn.secondary:hover {
+            background: #333;
+            color: #d4c4a8;
+        }
+
+        /* Import Items */
+        .import-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #222;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+        }
+        .import-item.selected { border-color: #3d9d94; background: #1a2a25; }
+        .import-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #3d9d94;
+        }
+        .import-item-info { flex: 1; min-width: 0; }
+        .import-item-name {
+            font-size: 0.8rem;
+            color: #eee;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .import-item-coords {
+            font-size: 0.65rem;
+            color: #666;
+        }
+        .import-item select {
+            padding: 4px 8px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ccc;
+            font-size: 0.7rem;
+        }
+        .import-item input[type="number"] {
+            padding: 4px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ccc;
+            font-size: 0.7rem;
+            text-align: center;
+        }
 
         /* Photo Carousel */
         .photo-carousel {
@@ -1011,15 +1119,15 @@
 </head>
 <body>
     <div class="header">
-        <h1>WEDDING PHOTO ROUTE</h1>
-        <div class="route">CITY HALL - SOHO - GREENWICH VILLAGE - HUDSON RIVER</div>
+        <h1>PHOTO ROUTE PLANNER</h1>
+        <div class="route" id="header-route-subtitle">Import or add spots to plan your route</div>
         <div class="header-buttons">
+            <button class="header-btn" onclick="openImportModal()">📁 Import Locations</button>
             <button class="header-btn" onclick="openSpotModal()">+ Add Spot</button>
             <button class="header-btn" onclick="copyRouteLink()">Copy Link</button>
-            <button class="header-btn" onclick="exportRoute()">Export JSON</button>
-            <button class="header-btn" onclick="document.getElementById('import-file').click()">Import</button>
+            <button class="header-btn" onclick="exportRoute()">Export</button>
+            <button class="header-btn" onclick="document.getElementById('import-file').click()">Load Route</button>
             <input type="file" id="import-file" accept=".json" onchange="importRoute(this.files[0])" />
-            <span class="time-badge">WEDNESDAY 1:00 - 5:00 PM</span>
         </div>
     </div>
 
@@ -1034,12 +1142,13 @@
             <div class="act" data-act="1">
                 <div class="act-head" onclick="toggle(1)">
                     <div>
-                        <h2>ACT I - CITY HALL</h2>
-                        <div class="act-meta">The Official Beginning</div>
+                        <h2 id="a1-title">ACT I</h2>
+                        <div class="act-meta" id="a1-subtitle">First Stop</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a1-budget">0 min</span>
                         <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(1)" title="Add spot to Act I">+</button>
+                        <button class="edit-act-btn" onclick="event.stopPropagation();editActName(1)" title="Edit act name">✎</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -1049,12 +1158,13 @@
             <div class="act" data-act="2">
                 <div class="act-head" onclick="toggle(2)">
                     <div>
-                        <h2>ACT II - SOHO</h2>
-                        <div class="act-meta">Books, Coffee, Cobblestones</div>
+                        <h2 id="a2-title">ACT II</h2>
+                        <div class="act-meta" id="a2-subtitle">Main Route</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a2-budget">0 min</span>
                         <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(2)" title="Add spot to Act II">+</button>
+                        <button class="edit-act-btn" onclick="event.stopPropagation();editActName(2)" title="Edit act name">✎</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -1064,12 +1174,13 @@
             <div class="act" data-act="3">
                 <div class="act-head" onclick="toggle(3)">
                     <div>
-                        <h2>ACT III - VILLAGE & RIVER</h2>
-                        <div class="act-meta">Golden Hour Finale</div>
+                        <h2 id="a3-title">ACT III</h2>
+                        <div class="act-meta" id="a3-subtitle">Grand Finale</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span class="act-budget" id="a3-budget">0 min</span>
                         <button class="add-act-spot" onclick="event.stopPropagation();openSpotModal(3)" title="Add spot to Act III">+</button>
+                        <button class="edit-act-btn" onclick="event.stopPropagation();editActName(3)" title="Edit act name">✎</button>
                         <span class="toggle">-</span>
                     </div>
                 </div>
@@ -1122,9 +1233,9 @@
                 <div class="spot-form-group">
                     <label>Act *</label>
                     <select id="spot-act">
-                        <option value="1">Act I - City Hall</option>
-                        <option value="2">Act II - SoHo</option>
-                        <option value="3">Act III - Village & River</option>
+                        <option value="1">Act I</option>
+                        <option value="2">Act II</option>
+                        <option value="3">Act III</option>
                     </select>
                 </div>
                 <div class="spot-form-group">
@@ -1154,6 +1265,39 @@
             </div>
         </div>
 
+        <!-- Import Modal -->
+        <div class="spot-modal" id="import-modal" onclick="if(event.target===this)closeImportModal()">
+            <div class="spot-modal-content" style="max-width:600px;max-height:80vh;">
+                <h3>IMPORT LOCATIONS</h3>
+                <div class="spot-form-group">
+                    <label>Select File</label>
+                    <input type="file" id="import-file-input" accept=".kml,.geojson,.json,.csv"
+                           onchange="handleImportFile(this.files[0])" style="color:#888;" />
+                    <div class="coord-hint">Supports KML (Google My Maps), GeoJSON, or CSV (Name, Lat, Lng)</div>
+                </div>
+                <div id="import-preview" style="max-height:300px;overflow-y:auto;margin:15px 0;"></div>
+                <div id="import-actions" style="display:none;flex-direction:column;gap:10px;">
+                    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #333;">
+                        <span id="import-count" style="color:#888;font-size:0.75rem;">0 selected</span>
+                        <div style="display:flex;gap:8px;">
+                            <button class="spot-btn-cancel" style="padding:4px 10px;font-size:0.65rem;" onclick="selectAllImports(true)">Select All</button>
+                            <button class="spot-btn-cancel" style="padding:4px 10px;font-size:0.65rem;" onclick="selectAllImports(false)">Select None</button>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <span style="color:#888;font-size:0.7rem;">Assign all to:</span>
+                        <button class="spot-btn-cancel" style="padding:4px 10px;font-size:0.65rem;" onclick="setAllImportActs(1)">Act I</button>
+                        <button class="spot-btn-cancel" style="padding:4px 10px;font-size:0.65rem;" onclick="setAllImportActs(2)">Act II</button>
+                        <button class="spot-btn-cancel" style="padding:4px 10px;font-size:0.65rem;" onclick="setAllImportActs(3)">Act III</button>
+                    </div>
+                </div>
+                <div class="spot-form-actions">
+                    <button class="spot-btn-cancel" onclick="closeImportModal()">Cancel</button>
+                    <button class="spot-btn-save" onclick="confirmImport()">Import Selected</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Photo Carousel -->
         <div class="photo-carousel" id="photo-carousel" onclick="if(event.target===this)closeCarousel()">
             <span class="carousel-close" onclick="closeCarousel()">&times;</span>
@@ -1170,9 +1314,9 @@
             <div id="map"></div>
             <div class="legend">
                 <h4>Route</h4>
-                <div class="legend-item"><div class="legend-dot c1"></div>Civic Center</div>
-                <div class="legend-item"><div class="legend-dot c2"></div>SoHo / NoLita</div>
-                <div class="legend-item"><div class="legend-dot c3"></div>West Village / Hudson River</div>
+                <div class="legend-item"><div class="legend-dot c1"></div>Act I</div>
+                <div class="legend-item"><div class="legend-dot c2"></div>Act II</div>
+                <div class="legend-item"><div class="legend-dot c3"></div>Act III</div>
             </div>
         </div>
     </div>
@@ -1182,62 +1326,20 @@
         const BUDGET = { 1: 40, 2: 100, 3: 100 };
         const TOTAL = 240;
 
-        // Selection state is baked in - these are the currently selected spots
-        const locs = [
-            { id:1, n:"City Hall Steps", lat:40.7128, lng:-74.0060, act:1, type:"Ceremony", dur:20, crowd:"low", on:true, seq:1, tags:["Editorial","Power Couple"], img:"https://picsum.photos/seed/cityhall-nyc/400/250", hours:"Outdoor - Always open" },
-            { id:2, n:"Worth St Colonnade", lat:40.7152, lng:-74.0030, act:1, type:"Architecture", dur:10, crowd:"low", on:true, seq:2, tags:["B&W Urban","Doorway"], img:"https://picsum.photos/seed/colonnade-arch/400/250", hours:"Outdoor - Always open" },
-            { id:3, n:"Foley Square", lat:40.7143, lng:-74.0018, act:1, type:"Urban", dur:10, crowd:"low", on:false, tags:["Newspaper Hide"], img:"https://picsum.photos/seed/foley-square/400/250", hours:"Outdoor - Always open" },
-            { id:4, n:"African Burial Ground", lat:40.7145, lng:-74.0042, act:1, type:"Memorial", dur:10, crowd:"low", on:false, tags:["Silhouette"], img:"https://picsum.photos/seed/memorial-nyc/400/250", hours:"Outdoor - Always open" },
+        // User-driven location data - starts empty, users import/create their own spots
+        // V2: Removed hardcoded NYC locations to make app city-agnostic
+        const locs = [];
 
-            { id:5, n:"Housing Works Bookstore", lat:40.7223, lng:-73.9972, act:2, type:"Bookstore", dur:20, crowd:"low", on:true, seq:1, tags:["Library Floor","Bookshelf Kiss"], img:"https://picsum.photos/seed/bookstore-vintage/400/250", hours:"11am-7pm" },
-            { id:6, n:"McNally Jackson", lat:40.7232, lng:-73.9945, act:2, type:"Bookstore", dur:15, crowd:"medium", on:false, tags:["Reading Together"], img:"https://picsum.photos/seed/mcnally-books/400/250", hours:"10am-9pm" },
-            { id:7, n:"Cafe Integral", lat:40.7215, lng:-73.9956, act:2, type:"Cafe", dur:15, crowd:"low", on:false, tags:["Window Seat","Coffee"], img:"https://picsum.photos/seed/coffee-window/400/250", hours:"Closes 4pm!" },
-            { id:8, n:"La Mercerie", lat:40.7210, lng:-73.9980, act:2, type:"Cafe", dur:15, crowd:"medium", on:false, tags:["Parisian Terrace"], img:"https://picsum.photos/seed/french-cafe/400/250", hours:"8am-10pm" },
-            { id:9, n:"Greene St Cobblestones", lat:40.7245, lng:-73.9995, act:2, type:"Street", dur:15, crowd:"low", on:true, seq:2, tags:["Cobblestone Carry","Romantic"], img:"https://picsum.photos/seed/cobblestone-soho/400/250", hours:"Outdoor - Always open" },
-            { id:10, n:"Mercer St Cast Iron", lat:40.7240, lng:-73.9988, act:2, type:"Street", dur:10, crowd:"low", on:false, tags:["Architecture"], img:"https://picsum.photos/seed/castiron-soho/400/250", hours:"Outdoor - Always open" },
-            { id:11, n:"Prince St Pizza", lat:40.7230, lng:-73.9948, act:2, type:"Food", dur:15, crowd:"low", on:true, seq:3, tags:["Just Married Pizza"], img:"https://picsum.photos/seed/pizza-slice/400/250", hours:"11am-11pm" },
-            { id:12, n:"What Goes Around", lat:40.7224, lng:-74.0007, act:2, type:"Vintage", dur:15, crowd:"medium", on:false, tags:["Retro","70s Vibes"], img:"https://picsum.photos/seed/vintage-clothes/400/250", hours:"11am-7pm" },
-            { id:13, n:"Evolution Store", lat:40.7265, lng:-73.9925, act:2, type:"Quirky", dur:10, crowd:"low", on:false, tags:["Silly Goggles"], img:"https://picsum.photos/seed/curiosity-shop/400/250", hours:"11am-7pm" },
+        // User-driven photo vibes - starts empty, users add their own
+        // V2: Removed hardcoded NYC-specific vibes
+        const bonus = [];
 
-            { id:14, n:"Washington Sq Arch", lat:40.7308, lng:-73.9973, act:3, type:"Park", dur:15, crowd:"high", on:true, seq:1, tags:["Grand Scale"], img:"https://picsum.photos/seed/washington-arch/400/250", hours:"Outdoor - Always open" },
-            { id:15, n:"WSP Fountain", lat:40.7308, lng:-73.9975, act:3, type:"Park", dur:10, crowd:"high", on:false, tags:["Candid","Lively"], img:"https://picsum.photos/seed/park-fountain/400/250", hours:"Outdoor - Always open" },
-            { id:16, n:"Three Lives Books", lat:40.7339, lng:-74.0021, act:3, type:"Bookstore", dur:12, crowd:"low", on:false, tags:["Intimate","Cozy"], img:"https://picsum.photos/seed/cozy-bookshop/400/250", hours:"10am-7pm" },
-            { id:17, n:"Caffe Reggio", lat:40.7303, lng:-74.0003, act:3, type:"Cafe", dur:15, crowd:"medium", on:false, tags:["Historic","Moody"], img:"https://picsum.photos/seed/italian-cafe/400/250", hours:"9am-3am" },
-            { id:18, n:"Murray's Cheese", lat:40.7322, lng:-74.0040, act:3, type:"Grocery", dur:12, crowd:"low", on:false, tags:["Domestic Bliss"], img:"https://picsum.photos/seed/cheese-shop/400/250", hours:"9am-8pm" },
-            { id:19, n:"Bleecker Playground", lat:40.7324, lng:-74.0056, act:3, type:"Playground", dur:18, crowd:"low", on:true, seq:2, tags:["Swings","Playful"], img:"https://picsum.photos/seed/playground-swings/400/250", hours:"Outdoor - Always open" },
-            { id:20, n:"The Uncommons", lat:40.7300, lng:-74.0000, act:3, type:"Game Cafe", dur:15, crowd:"low", on:false, tags:["Board Games"], img:"https://picsum.photos/seed/boardgame-cafe/400/250", hours:"10am-11pm" },
-            { id:21, n:"Hudson River Pier 45", lat:40.7338, lng:-74.0108, act:3, type:"Riverside", dur:20, crowd:"low", on:true, seq:3, tags:["Golden Hour","Wide Open"], img:"https://picsum.photos/seed/hudson-pier-sunset/400/250", hours:"Outdoor - Always open" },
-            { id:22, n:"Christopher St Pier", lat:40.7352, lng:-74.0117, act:3, type:"Sunset", dur:15, crowd:"low", on:true, seq:4, tags:["Silhouette","Finale"], img:"https://picsum.photos/seed/sunset-silhouette/400/250", hours:"Outdoor - Always open" },
-            { id:23, n:"Pier 46 Lawn", lat:40.7325, lng:-74.0115, act:3, type:"Riverside", dur:15, crowd:"low", on:false, tags:["Grass Field","Relaxed"], img:"https://picsum.photos/seed/grass-waterfront/400/250", hours:"Outdoor - Always open" },
-            { id:24, n:"Angelika Film Center", lat:40.7265, lng:-73.9959, act:2, type:"Cinema", dur:15, crowd:"low", on:false, tags:["Film Noir","Marquee"], img:"https://picsum.photos/seed/cinema-marquee/400/250", hours:"10am-11pm" }
-        ];
-
-        const bonus = [
-            { id:101, n:"Record/Vinyl Shop", act:2, dur:15, crowd:"low", on:false, img:"inspo/08-vinyl-shop.png",
-              desc:"John & Yoko vinyl kiss recreation", tags:["Vinyl Kiss","Nostalgic"] },
-            { id:102, n:"Shadow Play Interior", act:2, dur:10, crowd:"low", on:false, img:"inspo/01-shadow-play.png",
-              desc:"Silhouette kiss cast on wall", tags:["Shadow","Artistic"] },
-            { id:103, n:"Noodle Shop", act:2, dur:20, crowd:"medium", on:false, img:"inspo/03-noodle-shop.png",
-              desc:"Candid eating + window dancing", tags:["Candid","Fun"] },
-            { id:104, n:"Kitchen/Cooking Scene", act:3, dur:12, crowd:"low", on:false, img:"inspo/05-kitchen-scene.png",
-              desc:"Domestic bliss, backs to camera", tags:["Kitchen","Everyday"] },
-            { id:105, n:"Bowling Alley", act:3, dur:25, crowd:"medium", on:false, img:"inspo/14-bowling-alley.png",
-              desc:"Bowling ball kiss, retro lanes", tags:["Bowling","Playful"] },
-            { id:106, n:"Tandem Bike Ride", act:3, dur:15, crowd:"low", on:false, img:"inspo/23-tandem-bike.png",
-              desc:"Riding along river, motion blur", tags:["Bike","Carefree"] },
-            { id:107, n:"Editorial Suits", act:2, dur:15, crowd:"low", on:false, img:"inspo/24-editorial-suits.png",
-              desc:"Back-to-back, minimal background", tags:["Fashion","Editorial"] },
-            { id:108, n:"Red Background", act:2, dur:10, crowd:"low", on:false, img:"inspo/26-red-background.png",
-              desc:"Bold red backdrop, theatrical", tags:["Red","Dramatic"] },
-            { id:109, n:"Cotton Candy Editorial", act:3, dur:10, crowd:"medium", on:false, img:"inspo/22-cotton-candy.png",
-              desc:"Street treat on steps, playful", tags:["Cotton Candy","Fun"] },
-            { id:110, n:"Dog Park Moment", act:3, dur:12, crowd:"medium", on:false, img:"inspo/07-dog-park.png",
-              desc:"Watching dogs, candid joy", tags:["Dogs","Candid"] },
-            { id:111, n:"Newspaper Cafe", act:3, dur:15, crowd:"medium", on:false, img:"inspo/34-newspaper-cafe.png",
-              desc:"Newspapers hiding faces at terrace", tags:["Newspaper","Parisian"] },
-            { id:112, n:"Retro Velvet Couch", act:2, dur:15, crowd:"low", on:false, img:"inspo/30-retro-couch.png",
-              desc:"70s velvet, heart sunglasses", tags:["Retro","Glam"] }
-        ];
+        // Act names - user-editable (stored in localStorage)
+        let actNames = {
+            1: { title: "ACT I", subtitle: "First Stop" },
+            2: { title: "ACT II", subtitle: "Main Route" },
+            3: { title: "ACT III", subtitle: "Grand Finale" }
+        };
 
         // All inspo photos - paths relative to index.html
         const inspoPhotos = [
@@ -1320,14 +1422,16 @@
         // ===== PERSISTENCE FUNCTIONS =====
         function saveState() {
             const state = {
-                version: 1,
-                locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
-                bonus: bonus.map(b => ({ id: b.id, on: b.on })),
+                version: 2,
+                // V2: Save full location data (user-created spots)
+                locs: locs,
+                bonus: bonus,
                 photoLinks: photoLinks,
                 customInspoPhotos: customInspoPhotos,
                 props: props,
                 customSpots: customSpots,
-                hiddenInspoPhotos: hiddenInspoPhotos
+                hiddenInspoPhotos: hiddenInspoPhotos,
+                actNames: actNames
             };
             try {
                 localStorage.setItem('weddingRoute', JSON.stringify(state));
@@ -1347,13 +1451,24 @@
         }
 
         function applyState(state) {
-            if (state.locs) {
+            // V2: Load full location data
+            if (state.version >= 2 && state.locs) {
+                // Clear existing and load from state
+                locs.length = 0;
+                state.locs.forEach(l => locs.push(l));
+            } else if (state.locs) {
+                // V1 compatibility: just update on/seq
                 state.locs.forEach(s => {
                     const loc = locs.find(l => l.id === s.id);
                     if (loc) { loc.on = s.on; loc.seq = s.seq; }
                 });
             }
-            if (state.bonus) {
+            // V2: Load full bonus data
+            if (state.version >= 2 && state.bonus) {
+                bonus.length = 0;
+                state.bonus.forEach(b => bonus.push(b));
+            } else if (state.bonus) {
+                // V1 compatibility
                 state.bonus.forEach(s => {
                     const b = bonus.find(x => x.id === s.id);
                     if (b) b.on = s.on;
@@ -1371,7 +1486,7 @@
             }
             if (state.customSpots) {
                 customSpots = state.customSpots;
-                // Add custom spots back to locs array
+                // Add custom spots back to locs array (for V1 compatibility)
                 customSpots.forEach(spot => {
                     if (!locs.find(l => l.id === spot.id)) {
                         locs.push(spot);
@@ -1381,25 +1496,29 @@
             if (state.hiddenInspoPhotos) {
                 hiddenInspoPhotos = state.hiddenInspoPhotos;
             }
+            if (state.actNames) {
+                actNames = state.actNames;
+            }
         }
 
         function exportRoute() {
             const state = {
-                version: 1,
+                version: 2,
                 exportedAt: new Date().toISOString(),
-                locs: locs.map(l => ({ id: l.id, on: l.on, seq: l.seq })),
-                bonus: bonus.map(b => ({ id: b.id, on: b.on })),
+                locs: locs,
+                bonus: bonus,
                 photoLinks: photoLinks,
                 customInspoPhotos: customInspoPhotos,
                 props: props,
                 customSpots: customSpots,
-                hiddenInspoPhotos: hiddenInspoPhotos
+                hiddenInspoPhotos: hiddenInspoPhotos,
+                actNames: actNames
             };
             const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'wedding-route.json';
+            a.download = 'photo-route.json';
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -1437,11 +1556,15 @@
         // ===== URL-BASED SHARING =====
         function updateURLHash() {
             const state = {
-                l: locs.filter(l => l.on).map(l => ({ i: l.id, s: l.seq })),
-                b: bonus.filter(b => b.on).map(b => b.id),
+                v: 2, // Version
+                l: locs, // V2: Full location data
+                b: bonus, // V2: Full bonus data
                 p: photoLinks,
                 cs: customSpots,
-                hi: hiddenInspoPhotos
+                hi: hiddenInspoPhotos,
+                pr: props, // Phase 1 fix: Include props
+                an: actNames, // Act names
+                cp: customInspoPhotos.length // Custom photo count (not actual photos - too large)
             };
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
             history.replaceState(null, '', '#' + encoded);
@@ -1452,34 +1575,55 @@
             if (!hash) return false;
             try {
                 const state = JSON.parse(decodeURIComponent(escape(atob(hash))));
-                locs.forEach(l => { l.on = false; l.seq = null; });
-                bonus.forEach(b => { b.on = false; });
-                Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
 
-                // Restore custom spots first (add to locs array)
-                if (state.cs) {
-                    customSpots = state.cs;
-                    customSpots.forEach(spot => {
-                        if (!locs.find(l => l.id === spot.id)) {
-                            locs.push(spot);
-                        }
+                // V2 format: full location data
+                if (state.v >= 2) {
+                    // Clear and load full data
+                    locs.length = 0;
+                    bonus.length = 0;
+                    Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
+
+                    if (state.l) state.l.forEach(l => locs.push(l));
+                    if (state.b) state.b.forEach(b => bonus.push(b));
+                    if (state.p) Object.assign(photoLinks, state.p);
+                    if (state.cs) customSpots = state.cs;
+                    if (state.hi) hiddenInspoPhotos = state.hi;
+                    if (state.pr) props = state.pr; // Phase 1 fix: Load props
+                    if (state.an) actNames = state.an; // Load act names
+
+                    // Show message if shared route had custom photos
+                    if (state.cp > 0) {
+                        setTimeout(() => {
+                            showToast(`Note: Original route had ${state.cp} custom photos (not included in shared link)`);
+                        }, 1000);
+                    }
+                } else {
+                    // V1 format compatibility
+                    locs.forEach(l => { l.on = false; l.seq = null; });
+                    bonus.forEach(b => { b.on = false; });
+                    Object.keys(photoLinks).forEach(k => delete photoLinks[k]);
+
+                    if (state.cs) {
+                        customSpots = state.cs;
+                        customSpots.forEach(spot => {
+                            if (!locs.find(l => l.id === spot.id)) {
+                                locs.push(spot);
+                            }
+                        });
+                    }
+
+                    if (state.hi) hiddenInspoPhotos = state.hi;
+
+                    state.l?.forEach(s => {
+                        const loc = locs.find(l => l.id === s.i);
+                        if (loc) { loc.on = true; loc.seq = s.s; }
                     });
+                    state.b?.forEach(id => {
+                        const b = bonus.find(x => x.id === id);
+                        if (b) b.on = true;
+                    });
+                    if (state.p) Object.assign(photoLinks, state.p);
                 }
-
-                // Restore hidden inspo photos
-                if (state.hi) {
-                    hiddenInspoPhotos = state.hi;
-                }
-
-                state.l?.forEach(s => {
-                    const loc = locs.find(l => l.id === s.i);
-                    if (loc) { loc.on = true; loc.seq = s.s; }
-                });
-                state.b?.forEach(id => {
-                    const b = bonus.find(x => x.id === id);
-                    if (b) b.on = true;
-                });
-                if (state.p) Object.assign(photoLinks, state.p);
                 return true;
             } catch (e) { return false; }
         }
@@ -1759,10 +1903,30 @@
         });
 
         function initMap() {
-            map = L.map('map').setView([40.725, -74.002], 14);
+            // Determine initial view based on locations
+            let initialView = [40.0, -95.0]; // US center as default
+            let initialZoom = 4;
+
+            if (locs.length > 0) {
+                // Center on first location
+                initialView = [locs[0].lat, locs[0].lng];
+                initialZoom = 14;
+            }
+
+            map = L.map('map').setView(initialView, initialZoom);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: 'OSM CARTO', subdomains: 'abcd', maxZoom: 20
             }).addTo(map);
+
+            // Try to get user's location if no spots exist
+            if (locs.length === 0 && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        map.setView([pos.coords.latitude, pos.coords.longitude], 12);
+                    },
+                    () => {} // Silently fail if denied
+                );
+            }
 
             locs.forEach(l => {
                 // Use coordinates-based Google Maps link (always works)
@@ -1986,6 +2150,17 @@
         }
 
         function render() {
+            // Update act titles
+            [1,2,3].forEach(act => {
+                const titleEl = document.getElementById(`a${act}-title`);
+                const subtitleEl = document.getElementById(`a${act}-subtitle`);
+                if (titleEl && actNames[act]) titleEl.textContent = actNames[act].title;
+                if (subtitleEl && actNames[act]) subtitleEl.textContent = actNames[act].subtitle;
+            });
+
+            // Check if we have any spots at all
+            const hasAnySpots = locs.length > 0;
+
             [1,2,3].forEach(act => {
                 const body = document.getElementById(`a${act}-body`);
                 // Sort: selected first (by seq), then unselected (by id)
@@ -2000,6 +2175,19 @@
 
                 // Get added bonus items for this act
                 const actBonus = bonus.filter(b => b.act === act && b.on);
+
+                // Show empty state only in Act I when there are no spots anywhere
+                if (!hasAnySpots && act === 1) {
+                    body.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📍</div>
+                            <h3>No spots yet</h3>
+                            <p>Import locations from Google Maps or add your first spot manually to start planning your route.</p>
+                            <button class="empty-state-btn" onclick="openImportModal()">Import Locations</button>
+                            <button class="empty-state-btn secondary" onclick="openSpotModal(1)">Add Spot Manually</button>
+                        </div>`;
+                    return;
+                }
 
                 // Build HTML: selected locs, then bonus items, then unselected locs
                 const selectedLocs = actLocs.filter(l => l.on);
@@ -2153,6 +2341,26 @@
 
             // Update end time (walk time updated separately via drawRoute)
             updateEndTime();
+
+            // Update header subtitle with route summary
+            updateHeaderSubtitle();
+        }
+
+        function updateHeaderSubtitle() {
+            const subtitle = document.getElementById('header-route-subtitle');
+            if (!subtitle) return;
+
+            if (locs.length === 0) {
+                subtitle.textContent = 'Import or add spots to plan your route';
+            } else {
+                const selectedCount = locs.filter(l => l.on).length;
+                const actCounts = [1, 2, 3].map(a => locs.filter(l => l.act === a && l.on).length);
+                const actSummary = actCounts.map((c, i) =>
+                    c > 0 ? `${actNames[i+1]?.title || `Act ${['I','II','III'][i]}`} (${c})` : null
+                ).filter(Boolean).join(' → ');
+
+                subtitle.textContent = actSummary || `${selectedCount} spot${selectedCount !== 1 ? 's' : ''} selected`;
+            }
         }
 
         function toggle(act) {
@@ -2456,6 +2664,277 @@
             drawRoute();
             calc();
             showToast('Spot deleted');
+        }
+
+        // ===== ACT NAME EDITING =====
+        function editActName(act) {
+            const currentTitle = actNames[act]?.title || `ACT ${['I','II','III'][act-1]}`;
+            const currentSubtitle = actNames[act]?.subtitle || '';
+
+            const newTitle = prompt('Act title:', currentTitle);
+            if (newTitle === null) return; // cancelled
+
+            const newSubtitle = prompt('Act subtitle (optional):', currentSubtitle);
+            if (newSubtitle === null) return; // cancelled
+
+            actNames[act] = {
+                title: newTitle || currentTitle,
+                subtitle: newSubtitle || ''
+            };
+
+            saveState();
+            render();
+            showToast(`Updated: ${actNames[act].title}`);
+        }
+
+        // ===== MASS IMPORT =====
+
+        // Parse KML file (Google My Maps export)
+        function parseKML(kmlText) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(kmlText, 'text/xml');
+            const placemarks = doc.querySelectorAll('Placemark');
+
+            return Array.from(placemarks).map(pm => {
+                const name = pm.querySelector('name')?.textContent || 'Unnamed';
+                const coords = pm.querySelector('coordinates')?.textContent?.trim();
+                if (!coords) return null;
+                const [lng, lat] = coords.split(',').map(parseFloat);
+                if (isNaN(lat) || isNaN(lng)) return null;
+                return { name, lat, lng };
+            }).filter(Boolean);
+        }
+
+        // Parse GeoJSON file (Google Takeout export)
+        function parseGeoJSON(geojsonText) {
+            try {
+                const data = JSON.parse(geojsonText);
+                return (data.features || [])
+                    .filter(f => f.geometry?.type === 'Point')
+                    .map(f => ({
+                        name: f.properties?.name || f.properties?.title || 'Unnamed',
+                        lat: f.geometry.coordinates[1],
+                        lng: f.geometry.coordinates[0]
+                    }));
+            } catch (e) {
+                console.error('GeoJSON parse error:', e);
+                return [];
+            }
+        }
+
+        // Parse CSV file (Name, Lat, Lng columns)
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) return [];
+
+            const header = lines[0].toLowerCase();
+            const hasHeader = header.includes('name') || header.includes('lat');
+
+            const results = [];
+            const startLine = hasHeader ? 1 : 0;
+
+            for (let i = startLine; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                if (cols.length >= 3) {
+                    const name = cols[0];
+                    const lat = parseFloat(cols[1]);
+                    const lng = parseFloat(cols[2]);
+                    if (name && !isNaN(lat) && !isNaN(lng)) {
+                        results.push({ name, lat, lng });
+                    }
+                } else if (cols.length === 2) {
+                    // Just coordinates, generate name
+                    const lat = parseFloat(cols[0]);
+                    const lng = parseFloat(cols[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        results.push({ name: `Location ${results.length + 1}`, lat, lng });
+                    }
+                }
+            }
+            return results;
+        }
+
+        // Geocode address using Nominatim (OpenStreetMap)
+        async function geocodeAddress(address) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data[0]) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon),
+                        displayName: data[0].display_name
+                    };
+                }
+            } catch (e) {
+                console.error('Geocoding error:', e);
+            }
+            return null;
+        }
+
+        // Import modal state
+        let importedLocations = [];
+
+        function openImportModal() {
+            document.getElementById('import-modal').classList.add('open');
+            document.getElementById('import-preview').innerHTML = '';
+            document.getElementById('import-actions').style.display = 'none';
+            importedLocations = [];
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').classList.remove('open');
+            importedLocations = [];
+        }
+
+        function handleImportFile(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                let parsed = [];
+                if (ext === 'kml') {
+                    parsed = parseKML(content);
+                } else if (ext === 'geojson' || ext === 'json') {
+                    parsed = parseGeoJSON(content);
+                } else if (ext === 'csv') {
+                    parsed = parseCSV(content);
+                } else {
+                    showToast('Unsupported file type. Use KML, GeoJSON, or CSV.');
+                    return;
+                }
+
+                if (parsed.length === 0) {
+                    showToast('No locations found in file');
+                    return;
+                }
+
+                importedLocations = parsed.map((loc, i) => ({
+                    ...loc,
+                    selected: true,
+                    act: 1,
+                    dur: 15
+                }));
+
+                renderImportPreview();
+            };
+            reader.readAsText(file);
+        }
+
+        function renderImportPreview() {
+            const preview = document.getElementById('import-preview');
+            const actions = document.getElementById('import-actions');
+
+            if (importedLocations.length === 0) {
+                preview.innerHTML = '<p style="color:#666;text-align:center;">No locations to preview</p>';
+                actions.style.display = 'none';
+                return;
+            }
+
+            preview.innerHTML = importedLocations.map((loc, i) => `
+                <div class="import-item ${loc.selected ? 'selected' : ''}">
+                    <input type="checkbox" ${loc.selected ? 'checked' : ''}
+                           onchange="toggleImportItem(${i})" />
+                    <div class="import-item-info">
+                        <div class="import-item-name">${loc.name}</div>
+                        <div class="import-item-coords">${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</div>
+                    </div>
+                    <select onchange="setImportAct(${i}, this.value)">
+                        <option value="1" ${loc.act===1?'selected':''}>Act I</option>
+                        <option value="2" ${loc.act===2?'selected':''}>Act II</option>
+                        <option value="3" ${loc.act===3?'selected':''}>Act III</option>
+                    </select>
+                    <input type="number" value="${loc.dur}" min="5" max="120"
+                           style="width:50px" onchange="setImportDur(${i}, this.value)" />
+                    <span style="color:#666;font-size:0.7rem;">min</span>
+                </div>
+            `).join('');
+
+            actions.style.display = 'flex';
+            document.getElementById('import-count').textContent =
+                `${importedLocations.filter(l => l.selected).length} of ${importedLocations.length} selected`;
+        }
+
+        function toggleImportItem(index) {
+            importedLocations[index].selected = !importedLocations[index].selected;
+            renderImportPreview();
+        }
+
+        function setImportAct(index, act) {
+            importedLocations[index].act = parseInt(act);
+        }
+
+        function setImportDur(index, dur) {
+            importedLocations[index].dur = parseInt(dur) || 15;
+        }
+
+        function selectAllImports(select) {
+            importedLocations.forEach(loc => loc.selected = select);
+            renderImportPreview();
+        }
+
+        function setAllImportActs(act) {
+            importedLocations.forEach(loc => loc.act = parseInt(act));
+            renderImportPreview();
+        }
+
+        async function confirmImport() {
+            const selected = importedLocations.filter(loc => loc.selected);
+            if (selected.length === 0) {
+                showToast('No locations selected');
+                return;
+            }
+
+            const maxId = Math.max(...locs.map(l => l.id), ...customSpots.map(s => s.id), 999);
+
+            selected.forEach((loc, i) => {
+                const newId = maxId + i + 1;
+                const spot = {
+                    id: newId,
+                    n: loc.name,
+                    lat: loc.lat,
+                    lng: loc.lng,
+                    act: loc.act,
+                    type: 'Imported',
+                    dur: loc.dur,
+                    crowd: 'low',
+                    on: true,
+                    seq: null,
+                    tags: [],
+                    img: `https://via.placeholder.com/400x250/222/666?text=${encodeURIComponent(loc.name)}`,
+                    hours: '',
+                    custom: true
+                };
+
+                locs.push(spot);
+                customSpots.push(spot);
+
+                // Assign sequence
+                const actSelected = locs.filter(l => l.act === spot.act && l.on);
+                spot.seq = actSelected.length;
+
+                addMarkerForSpot(spot);
+            });
+
+            // Fit map to new bounds
+            if (selected.length > 0) {
+                const bounds = L.latLngBounds(selected.map(l => [l.lat, l.lng]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            saveState();
+            initSequence();
+            updateMarkerIcons();
+            render();
+            drawRoute();
+            calc();
+
+            closeImportModal();
+            showToast(`Imported ${selected.length} locations`);
         }
 
         // ===== PHOTO CAROUSEL =====
